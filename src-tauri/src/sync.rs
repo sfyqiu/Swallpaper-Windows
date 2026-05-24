@@ -250,9 +250,8 @@ pub struct SyncRecordCounts {
 impl SyncManifest {
     fn create(provider: &str) -> Self {
         let now = now_iso_string();
-        let device = hostname::get()
-            .ok()
-            .and_then(|h| h.into_string().ok())
+        let device = env::var_os("COMPUTERNAME")
+            .map(|s| s.to_string_lossy().to_string())
             .unwrap_or_else(|| "Unknown".to_string());
         Self {
             schema_version: 1,
