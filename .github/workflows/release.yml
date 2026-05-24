@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Build Tauri bundle
+        run: npm run tauri:build
+
+      - name: Find MSI
+        id: find-msi
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem -Path src-tauri/target/release/bundle/msi -Filter *.msi | Select-Object -First 1
+          echo "msi-path=$($msi.FullName)" >> $env:GITHUB_OUTPUT
+          echo "msi-name=$($msi.Name)" >> $env:GITHUB_OUTPUT
+
+      - name: Find EXE
+        id: find-exe
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path src-tauri/target/release/bundle/nsis -Filter *.exe | Select-Object -First 1
+          echo "exe-path=$($exe.FullName)" >> $env:GITHUB_OUTPUT
+          echo "exe-name=$($exe.Name)" >> $env:GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            ${{ steps.find-msi.outputs.msi-path }}
+            ${{ steps.find-exe.outputs.exe-path }}
