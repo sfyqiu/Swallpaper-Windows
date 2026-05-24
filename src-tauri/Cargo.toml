@@ -1,0 +1,24 @@
+[package]
+name = "swallpaper-windows"
+version = "0.1.0"
+description = "Windows port prototype for Swallpaper"
+authors = ["sfyqiu"]
+edition = "2021"
+
+[lib]
+name = "swallpaper_windows_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.4.0", features = [] }
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2.8.0", features = [] }
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.58", features = [
+  "Win32_Foundation",
+  "Win32_UI_WindowsAndMessaging"
+] }
