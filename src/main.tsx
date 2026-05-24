@@ -579,7 +579,9 @@ function App() {
   return (
     <main className="shell">
       <aside className="sidebar">
-        <div className="brand-mark">S</div>
+        <div className="brand-mark">
+            <img src="/icon.png" alt="Swallpaper" style={{ width: 36, height: 36, borderRadius: 10 }} />
+          </div>
         <nav aria-label="Prototype sections">
           <a className="nav-item active" href="#sources">
             <Search size={18} /> Sources
