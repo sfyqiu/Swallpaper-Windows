@@ -288,8 +288,9 @@ fn enumerate_monitors() -> Result<Vec<(i32, i32, i32, i32)>, String> {
             Some(monitor_enum_callback),
             LPARAM(&monitors as *const _ as isize),
         )
+        .ok()
+        .map_err(|e| format!("EnumDisplayMonitors failed: {e}"))?;
     }
-    .map_err(|e| format!("EnumDisplayMonitors failed: {e}"))?;
 
     let result = monitors.lock().map_err(|e| format!("Lock error: {e}"))?.clone();
     Ok(result)
@@ -310,7 +311,7 @@ unsafe extern "system" fn monitor_enum_callback(
     let mut info = MONITORINFOEXW::default();
     info.monitorInfo.cbSize = std::mem::size_of::<MONITORINFOEXW>() as u32;
 
-    if GetMonitorInfoW(hmonitor, &mut info as *mut _ as *mut _).is_ok() {
+    if GetMonitorInfoW(hmonitor, &mut info as *mut _ as *mut _).as_bool() {
         let r = info.monitorInfo.rcWork;
         if let Ok(mut guard) = monitors.lock() {
             guard.push((r.left, r.top, r.right, r.bottom));
@@ -380,7 +381,7 @@ unsafe extern "system" fn workerw_enum_callback(
     }
 
     let mut rect = RECT::default();
-    if GetWindowRect(hwnd, &mut rect).is_ok() {
+    if GetWindowRect(hwnd, &mut rect).as_bool() {
         if let Ok(mut guard) = list.lock() {
             guard.push((hwnd.0 as isize, (rect.left, rect.top, rect.right, rect.bottom)));
         }
@@ -440,6 +441,7 @@ fn inject_into_desktop(
         // Parent to WorkerW if available
         if let Some(workerw) = workerw_hwnd {
             SetParent(video, HWND(workerw as *mut _))
+                .ok()
                 .map_err(|e| format!("SetParent failed: {e}"))?;
         }
 
@@ -453,6 +455,7 @@ fn inject_into_desktop(
             height,
             SWP_NOACTIVATE | SWP_SHOWWINDOW,
         )
+        .ok()
         .map_err(|e| format!("SetWindowPos failed: {e}"))?;
     }
 
