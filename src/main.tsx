@@ -7,12 +7,15 @@ import {
   FolderOpen,
   Heart,
   Image,
+  Info,
   KeyRound,
   Monitor,
   Pause,
   Play,
   RefreshCw,
+  RotateCw,
   Search,
+  Settings,
   Square,
   Star,
   Video,
@@ -160,6 +163,23 @@ type ApiTestResult = {
   error: string | null;
 };
 
+type SchedulerConfig = {
+  enabled: boolean;
+  intervalMinutes: number;
+  includeStatic: boolean;
+  includeVideo: boolean;
+  changeOnStartup: boolean;
+};
+
+type QueueItem = {
+  id: string;
+  title: string;
+  kind: string;
+  progress: number;
+  status: string;
+  error: string | null;
+};
+
 const isTauri = "__TAURI_INTERNALS__" in window;
 const keyStoragePrefix = "swallpaper.windows.apiKey.";
 
@@ -214,6 +234,11 @@ function App() {
   const [apiResults, setApiResults] = React.useState<ApiTestResult[] | null>(null);
   const [isTesting, setIsTesting] = React.useState(false);
   const [favoriteIds, setFavoriteIds] = React.useState<Set<string>>(new Set());
+  const [schedulerConfig, setSchedulerConfig] = React.useState<SchedulerConfig>({
+    enabled: false, intervalMinutes: 30, includeStatic: true, includeVideo: true, changeOnStartup: false,
+  });
+  const [queueItems, setQueueItems] = React.useState<QueueItem[]>([]);
+  const [rotateInterval, setRotateInterval] = React.useState<ReturnType<typeof setInterval> | null>(null);
 
   const activeSourceInfo = sources.find((source) => source.id === activeSource);
   const activeSourceNeedsKey = activeSourceInfo?.capabilities.requiresApiKey ?? false;
@@ -472,11 +497,62 @@ function App() {
     });
   }
 
+  async function loadSchedulerConfig() {
+    const result = await call<SchedulerConfig>("get_scheduler_config");
+    if (result.ok && result.data) setSchedulerConfig(result.data);
+  }
+
+  async function saveSchedulerConfig(cfg: SchedulerConfig) {
+    await call<string>("save_scheduler_config", { config: cfg });
+  }
+
+  function startRotate() {
+    const cfg = { ...schedulerConfig, enabled: true };
+    setSchedulerConfig(cfg);
+    saveSchedulerConfig(cfg);
+    const interval = setInterval(() => {
+      rotateNow();
+    }, cfg.intervalMinutes * 60 * 1000);
+    setRotateInterval(interval);
+    setStatus(`Auto-rotate started: every ${cfg.intervalMinutes}min`);
+  }
+
+  function stopRotate() {
+    const cfg = { ...schedulerConfig, enabled: false };
+    setSchedulerConfig(cfg);
+    saveSchedulerConfig(cfg);
+    if (rotateInterval) { clearInterval(rotateInterval); setRotateInterval(null); }
+    setStatus("Auto-rotate stopped");
+  }
+
+  async function rotateNow() {
+    const result = await call<any>("rotate_wallpaper");
+    if (result.ok) {
+      setStatus(`Rotated to: ${result.data?.title ?? "unknown"}`);
+    } else {
+      setStatus(result.error ?? "Rotate failed");
+    }
+  }
+
+  async function refreshQueue() {
+    const result = await call<QueueItem[]>("get_download_queue");
+    if (result.ok && result.data) setQueueItems(result.data);
+  }
+
+  async function downloadSelected(items: WallpaperItem[]) {
+    setStatus(`Downloading ${items.length} items...`);
+    await call<any>("download_batch", { items });
+    await refreshLibrary();
+    await refreshQueue();
+    setStatus("Batch download complete");
+  }
+
   React.useEffect(() => {
     void loadSources();
     void refreshLibrary();
     void refreshVideoStatus();
     void loadSyncInfo();
+    void loadSchedulerConfig();
   }, []);
 
   React.useEffect(() => {
@@ -517,6 +593,9 @@ function App() {
           </a>
           <a className="nav-item" href="#sync">
             <Cloud size={18} /> Sync
+          </a>
+          <a className="nav-item" href="#settings">
+            <Settings size={18} /> Settings
           </a>
         </nav>
       </aside>
@@ -883,6 +962,70 @@ function App() {
                   {syncMsg}
                 </p>
               )}
+            </div>
+
+            <div className="panel compact-panel" id="settings">
+              <div className="panel-title">
+                <Settings size={19} />
+                <h2>Settings</h2>
+              </div>
+              <div className="settings-section">
+                <h3><RotateCw size={16} /> Auto-Rotate</h3>
+                <div className="settings-row">
+                  <span>Interval (min)</span>
+                  <input type="number" min={1} max={1440} value={schedulerConfig.intervalMinutes}
+                    onChange={(e) => setSchedulerConfig((c) => ({ ...c, intervalMinutes: Math.max(1, parseInt(e.target.value) || 30) }))}
+                    style={{ width: 70, padding: "4px 8px", borderRadius: 8, border: "1px solid var(--line)", background: "rgba(0,0,0,0.2)", color: "var(--text)" }} />
+                </div>
+                <div className="settings-row">
+                  <span>Static wallpapers</span>
+                  <input type="checkbox" checked={schedulerConfig.includeStatic} onChange={(e) => setSchedulerConfig((c) => ({ ...c, includeStatic: e.target.checked }))} />
+                </div>
+                <div className="settings-row">
+                  <span>Video wallpapers</span>
+                  <input type="checkbox" checked={schedulerConfig.includeVideo} onChange={(e) => setSchedulerConfig((c) => ({ ...c, includeVideo: e.target.checked }))} />
+                </div>
+                <div className="engine-actions">
+                  {schedulerConfig.enabled ? (
+                    <button onClick={stopRotate}><Square size={17} /> Stop</button>
+                  ) : (
+                    <button onClick={startRotate}><Play size={17} /> Start</button>
+                  )}
+                  <button onClick={rotateNow}><RotateCw size={17} /> Rotate Now</button>
+                </div>
+              </div>
+              <div className="settings-section">
+                <h3>Content</h3>
+                <div className="settings-row">
+                  <span>Adult content</span>
+                  <button className={`nsfw-toggle ${nsfwEnabled ? "active" : ""}`} onClick={toggleNsfw}>{nsfwEnabled ? "ON" : "OFF"}</button>
+                </div>
+              </div>
+              <div className="settings-section">
+                <h3><Download size={16} /> Downloads</h3>
+                {queueItems.length === 0 ? (
+                  <p style={{ color: "var(--muted)", fontSize: 13 }}>No active downloads</p>
+                ) : (
+                  queueItems.slice(-5).map((qi) => (
+                    <div key={qi.id} className="queue-item" style={{ display: "flex", gap: 8, alignItems: "center", padding: "4px 0", fontSize: 13 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: 999, background: qi.status === "done" ? "var(--accent)" : qi.status === "error" ? "var(--danger)" : "var(--amber)" }} />
+                      <span className="truncate" style={{ flex: 1 }}>{qi.title}</span>
+                      <span style={{ color: "var(--muted)", fontSize: 11 }}>{qi.status}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="settings-section">
+                <h3><Info size={16} /> About</h3>
+                <dl className="meta-list">
+                  <div><dt>Version</dt><dd>v0.1.2</dd></div>
+                  <div><dt>Build</dt><dd>Tauri 2 + React + Rust</dd></div>
+                </dl>
+                <div className="engine-actions" style={{ marginTop: 10 }}>
+                  <button onClick={() => window.open("https://github.com/sfyqiu/Swallpaper-Windows", "_blank")}><ExternalLink size={16} /> Repository</button>
+                  <button onClick={() => window.open("https://github.com/sfyqiu/Swallpaper-Windows/issues", "_blank")}><Info size={16} /> Report Issue</button>
+                </div>
+              </div>
             </div>
           </div>
         </section>

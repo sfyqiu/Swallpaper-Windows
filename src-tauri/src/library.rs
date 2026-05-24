@@ -5,6 +5,7 @@ use std::{
     fs,
     io::Write,
     path::{Path, PathBuf},
+    sync::Mutex as StdMutex,
 };
 
 #[derive(Serialize)]
@@ -392,4 +393,81 @@ mod tests {
         let n: u64 = ts.parse().unwrap();
         assert!(n > 1700000000); // after 2023
     }
+}
+
+// ---- Download queue ----
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QueueItem {
+    pub id: String,
+    pub title: String,
+    pub kind: String,
+    pub progress: f64,
+    pub status: String,
+    pub error: Option<String>,
+}
+
+static QUEUE: StdMutex<Vec<QueueItem>> = StdMutex::new(Vec::new());
+
+pub fn get_queue() -> Vec<QueueItem> {
+    QUEUE.lock().map(|q| q.clone()).unwrap_or_default()
+}
+
+pub fn clear_queue() {
+    if let Ok(mut q) = QUEUE.lock() {
+        q.clear();
+    }
+}
+
+pub async fn download_batch(
+    items: Vec<WallpaperItem>,
+) -> Result<Vec<DownloadResult>, String> {
+    let mut results = Vec::new();
+
+    {
+        let mut q = QUEUE.lock().map_err(|e| format!("Lock: {e}"))?;
+        for item in &items {
+            q.push(QueueItem {
+                id: item.id.clone(),
+                title: item.title.clone(),
+                kind: item.kind.clone(),
+                progress: 0.0,
+                status: "queued".to_string(),
+                error: None,
+            });
+        }
+    }
+
+    for item in &items {
+        {
+            let mut q = QUEUE.lock().map_err(|e| format!("Lock: {e}"))?;
+            if let Some(qi) = q.iter_mut().find(|qi| qi.id == item.id) {
+                qi.status = "downloading".to_string();
+                qi.progress = 0.5;
+            }
+        }
+
+        let result = download_wallpaper(item.clone()).await;
+
+        {
+            let mut q = QUEUE.lock().map_err(|e| format!("Lock: {e}"))?;
+            if let Some(qi) = q.iter_mut().find(|qi| qi.id == item.id) {
+                match &result {
+                    Ok(_) => {
+                        qi.status = "done".to_string();
+                        qi.progress = 1.0;
+                    }
+                    Err(e) => {
+                        qi.status = "error".to_string();
+                        qi.error = Some(e.clone());
+                    }
+                }
+            }
+        }
+
+        results.push(result);
+    }
+
+    results.into_iter().collect()
 }

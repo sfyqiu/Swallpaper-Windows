@@ -1,4 +1,5 @@
 mod library;
+mod scheduler;
 mod sources;
 mod sync;
 mod wallpaper;
@@ -76,6 +77,44 @@ async fn search_wallpapers(request: sources::SearchRequest) -> Result<sources::S
     sources::search(request).await
 }
 
+// ---- Scheduler ----
+
+#[tauri::command]
+fn get_scheduler_config() -> scheduler::SchedulerConfig {
+    scheduler::SchedulerConfig::load()
+}
+
+#[tauri::command]
+fn save_scheduler_config(config: scheduler::SchedulerConfig) -> Result<String, String> {
+    config.save()?;
+    Ok("Scheduler config saved.".to_string())
+}
+
+#[tauri::command]
+fn rotate_wallpaper(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, Mutex<VideoWallpaperState>>,
+) -> Result<scheduler::RotateResult, String> {
+    scheduler::rotate_wallpaper(&app, &state)
+}
+
+// ---- Download queue ----
+
+#[tauri::command]
+fn get_download_queue() -> Vec<library::QueueItem> {
+    library::get_queue()
+}
+
+#[tauri::command]
+fn clear_download_queue() {
+    library::clear_queue()
+}
+
+#[tauri::command]
+async fn download_batch(items: Vec<sources::WallpaperItem>) -> Result<Vec<library::DownloadResult>, String> {
+    library::download_batch(items).await
+}
+
 // ---- Cloud sync commands ----
 
 #[tauri::command]
@@ -148,11 +187,17 @@ pub fn run() {
             library_status,
             list_library_wallpapers,
             download_wallpaper,
+            download_batch,
+            get_download_queue,
+            clear_download_queue,
             list_wallpaper_sources,
             search_wallpapers,
             test_api_connectivity,
             toggle_favorite,
             list_favorites,
+            get_scheduler_config,
+            save_scheduler_config,
+            rotate_wallpaper,
             list_sync_providers,
             get_sync_config,
             get_sync_status,
