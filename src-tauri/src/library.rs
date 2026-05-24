@@ -47,19 +47,19 @@ pub struct LibraryRecord {
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LibraryWallpaper {
-    id: String,
-    kind: String,
-    source: String,
-    title: String,
-    author: Option<String>,
-    detail_url: String,
-    remote_url: String,
-    video_url: Option<String>,
-    file_path: String,
-    thumbnail_url: String,
-    width: Option<u32>,
-    height: Option<u32>,
-    downloaded_at: String,
+    pub id: String,
+    pub kind: String,
+    pub source: String,
+    pub title: String,
+    pub author: Option<String>,
+    pub detail_url: String,
+    pub remote_url: String,
+    pub video_url: Option<String>,
+    pub file_path: String,
+    pub thumbnail_url: String,
+    pub width: Option<u32>,
+    pub height: Option<u32>,
+    pub downloaded_at: String,
 }
 
 fn library_root() -> Result<PathBuf, String> {
