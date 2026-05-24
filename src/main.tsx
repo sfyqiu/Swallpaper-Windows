@@ -104,6 +104,48 @@ type VideoWallpaperStatus = {
   currentPath: string | null;
 };
 
+type ProviderInfo = {
+  id: string;
+  name: string;
+  description: string;
+  suggestedPath: string | null;
+  detected: boolean;
+  detectedPath: string | null;
+};
+
+type SyncConfig = {
+  enabled: boolean;
+  provider: string | null;
+  providerName: string | null;
+  rootPath: string | null;
+  libraryPath: string | null;
+  mode: string;
+};
+
+type SyncStatus = {
+  enabled: boolean;
+  provider: string | null;
+  providerName: string | null;
+  libraryPath: string | null;
+  mode: string;
+  manifest: {
+    schemaVersion: number;
+    libraryId: string;
+    appName: string;
+    createdAt: string;
+    updatedAt: string;
+    lastDeviceName: string;
+    provider: string;
+    records: { wallpapers: number; media: number; downloads: number };
+  } | null;
+  scanResult: {
+    totalRecords: number;
+    availableCount: number;
+    missingCount: number;
+    records: any[];
+  } | null;
+};
+
 const isTauri = "__TAURI_INTERNALS__" in window;
 const keyStoragePrefix = "swallpaper.windows.apiKey.";
 
@@ -150,6 +192,10 @@ function App() {
   const [isSearching, setIsSearching] = React.useState(false);
   const [videoPath, setVideoPath] = React.useState("");
   const [videoStatus, setVideoStatus] = React.useState<VideoWallpaperStatus | null>(null);
+  const [providers, setProviders] = React.useState<ProviderInfo[]>([]);
+  const [syncConfig, setSyncConfig] = React.useState<SyncConfig | null>(null);
+  const [syncStatus, setSyncStatus] = React.useState<SyncStatus | null>(null);
+  const [syncMsg, setSyncMsg] = React.useState("");
 
   const activeSourceInfo = sources.find((source) => source.id === activeSource);
   const activeSourceNeedsKey = activeSourceInfo?.capabilities.requiresApiKey ?? false;
@@ -320,10 +366,62 @@ function App() {
     }
   }
 
+  async function loadSyncInfo() {
+    const [provResult, cfgResult, statusResult] = await Promise.all([
+      call<ProviderInfo[]>("list_sync_providers"),
+      call<SyncConfig>("get_sync_config"),
+      call<SyncStatus>("get_sync_status"),
+    ]);
+    if (provResult.ok && provResult.data) setProviders(provResult.data);
+    if (cfgResult.ok && cfgResult.data) setSyncConfig(cfgResult.data);
+    if (statusResult.ok && statusResult.data) setSyncStatus(statusResult.data);
+  }
+
+  async function enableSync(provider: string, providerName: string, rootPath: string, mode: string) {
+    setSyncMsg("Enabling...");
+    const result = await call<string>("enable_cloud_sync", { provider, providerName, rootPath, mode });
+    if (result.ok) {
+      setSyncMsg(result.data ?? "Enabled");
+      await loadSyncInfo();
+    } else {
+      setSyncMsg(result.error ?? "Failed to enable sync");
+    }
+  }
+
+  async function disableSync() {
+    setSyncMsg("Disabling...");
+    const result = await call<string>("disable_cloud_sync");
+    if (result.ok) {
+      setSyncMsg(result.data ?? "Disabled");
+      await loadSyncInfo();
+    } else {
+      setSyncMsg(result.error ?? "Failed to disable sync");
+    }
+  }
+
+  async function scanLibrary() {
+    setSyncMsg("Scanning...");
+    const result = await call<any>("scan_sync_library");
+    if (result.ok) {
+      setSyncMsg(`Scan complete: ${result.data?.totalRecords ?? 0} records`);
+      await loadSyncInfo();
+    } else {
+      setSyncMsg(result.error ?? "Scan failed");
+    }
+  }
+
+  async function importToSync() {
+    setSyncMsg("Importing...");
+    const result = await call<string>("import_local_to_sync");
+    setSyncMsg(result.data ?? result.error ?? "Import completed");
+    await loadSyncInfo();
+  }
+
   React.useEffect(() => {
     void loadSources();
     void refreshLibrary();
     void refreshVideoStatus();
+    void loadSyncInfo();
   }, []);
 
   React.useEffect(() => {
@@ -363,7 +461,7 @@ function App() {
             <Video size={18} /> Video Host
           </a>
           <a className="nav-item" href="#sync">
-            <Cloud size={18} /> Cloud Sync
+            <Cloud size={18} /> Sync
           </a>
         </nav>
       </aside>
@@ -602,6 +700,99 @@ function App() {
                   </article>
                 ))}
               </div>
+            </div>
+
+            <div className="panel compact-panel" id="sync">
+              <div className="panel-title">
+                <Cloud size={19} />
+                <h2>Cloud Sync</h2>
+              </div>
+
+              {syncConfig?.enabled ? (
+                <div className="sync-status">
+                  <dl className="meta-list">
+                    <div>
+                      <dt>Provider</dt>
+                      <dd>{syncConfig.providerName ?? syncConfig.provider}</dd>
+                    </div>
+                    <div>
+                      <dt>Mode</dt>
+                      <dd>{syncConfig.mode === "auto" ? "Auto" : "Manual"}</dd>
+                    </div>
+                    <div>
+                      <dt>Library</dt>
+                      <dd className="truncate">{syncConfig.libraryPath ?? "—"}</dd>
+                    </div>
+                    {syncStatus?.manifest && (
+                      <div>
+                        <dt>Records</dt>
+                        <dd>
+                          {syncStatus.manifest.records.wallpapers} WP / {syncStatus.manifest.records.media} Video
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                  <div className="engine-actions">
+                    <button onClick={scanLibrary}>
+                      <RefreshCw size={17} /> Scan
+                    </button>
+                    {syncConfig.mode === "manual" && (
+                      <button onClick={importToSync}>
+                        <Download size={17} /> Import
+                      </button>
+                    )}
+                    <button onClick={disableSync} style={{ borderColor: "rgba(255,107,107,0.4)", background: "rgba(255,107,107,0.1)" }}>
+                      <Square size={17} /> Disable
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="sync-setup">
+                  <p className="sync-hint">选择一个云盘目录，壁纸库会自动同步到云端。</p>
+                  <div className="provider-list">
+                    {providers.map((p) => (
+                      <button
+                        key={p.id}
+                        className={`provider-item ${p.detected ? "detected" : ""}`}
+                        onClick={() => {
+                          const path = p.detectedPath ?? p.suggestedPath ?? "";
+                          if (path) enableSync(p.id, p.name, path, "manual");
+                        }}
+                      >
+                        <div>
+                          <strong>{p.name}</strong>
+                          <small>{p.detected ? p.detectedPath : "Not detected"}</small>
+                        </div>
+                        {p.detected ? (
+                          <span className="provider-badge">Found</span>
+                        ) : (
+                          <span className="provider-badge muted">Select</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                  <label className="field" style={{ marginTop: 10 }}>
+                    <span>Custom folder path</span>
+                    <div className="input-row">
+                      <input
+                        placeholder="C:\Users\xxx\OneDrive"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            const val = (e.target as HTMLInputElement).value.trim();
+                            if (val) enableSync("custom", "Custom Folder", val, "manual");
+                          }
+                        }}
+                      />
+                    </div>
+                  </label>
+                </div>
+              )}
+
+              {syncMsg && (
+                <p style={{ marginTop: 10, color: "var(--muted)", fontSize: 13 }}>
+                  {syncMsg}
+                </p>
+              )}
             </div>
           </div>
         </section>
