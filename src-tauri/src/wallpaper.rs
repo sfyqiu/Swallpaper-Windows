@@ -330,12 +330,12 @@ fn find_workerw_map() -> Vec<((i32, i32, i32, i32), isize)> {
     unsafe {
         if let Some(progman) = find_window_by_class("Progman") {
             use windows::Win32::UI::WindowsAndMessaging::SendMessageW;
-            use windows::Win32::Foundation::HWND;
+            use windows::Win32::Foundation::{HWND, WPARAM, LPARAM as WLPARAM};
             SendMessageW(
                 HWND(progman as *mut _),
                 0x052C,
-                None,
-                None,
+                WPARAM(0),
+                WLPARAM(0),
             );
         }
     }
@@ -360,7 +360,8 @@ unsafe extern "system" fn workerw_enum_callback(
     lparam: windows::Win32::Foundation::LPARAM,
 ) -> windows::Win32::Foundation::BOOL {
     use windows::Win32::UI::WindowsAndMessaging::{FindWindowExW, GetClassNameW, GetWindowRect};
-    use windows::Win32::Foundation::RECT;
+    use windows::Win32::Foundation::{HWND, RECT};
+    use windows::core::PCWSTR;
 
     let list_ptr = lparam.0 as *const std::sync::Mutex<Vec<(isize, (i32, i32, i32, i32))>>;
     let list = &*list_ptr;
@@ -373,7 +374,7 @@ unsafe extern "system" fn workerw_enum_callback(
         return windows::Win32::Foundation::BOOL::from(true);
     }
 
-    let defview = FindWindowExW(hwnd, None, None, None);
+    let defview = FindWindowExW(hwnd, HWND(std::ptr::null_mut()), PCWSTR::null(), PCWSTR::null()).ok();
     if defview.is_none() {
         return windows::Win32::Foundation::BOOL::from(true);
     }
@@ -395,7 +396,8 @@ fn find_window_by_class(class: &str) -> Option<isize> {
 
     let class_wide: Vec<u16> = class.encode_utf16().chain(std::iter::once(0)).collect();
     unsafe {
-        FindWindowW(Some(PCWSTR(class_wide.as_ptr())), None)
+        FindWindowW(PCWSTR(class_wide.as_ptr()), PCWSTR::null())
+            .ok()
             .map(|hwnd| hwnd.0 as isize)
     }
 }
@@ -407,10 +409,9 @@ fn find_window_by_title(title: &str) -> Option<isize> {
 
     let title_wide: Vec<u16> = title.encode_utf16().chain(std::iter::once(0)).collect();
 
-    // Retry a few times since the window might not be immediately findable
     for _ in 0..20 {
         unsafe {
-            if let Some(hwnd) = FindWindowW(None, Some(PCWSTR(title_wide.as_ptr()))) {
+            if let Ok(hwnd) = FindWindowW(PCWSTR::null(), PCWSTR(title_wide.as_ptr())) {
                 return Some(hwnd.0 as isize);
             }
         }
@@ -438,7 +439,7 @@ fn inject_into_desktop(
     unsafe {
         // Parent to WorkerW if available
         if let Some(workerw) = workerw_hwnd {
-            SetParent(video, Some(HWND(workerw as *mut _)))
+            SetParent(video, HWND(workerw as *mut _))
                 .map_err(|e| format!("SetParent failed: {e}"))?;
         }
 
