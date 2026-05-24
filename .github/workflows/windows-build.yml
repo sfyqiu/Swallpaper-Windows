@@ -32,6 +32,12 @@ jobs:
       - name: Build Tauri bundle
         run: npm run tauri:build
 
+      - name: Upload Cargo.lock
+        uses: actions/upload-artifact@v4
+        with:
+          name: cargo-lock
+          path: src-tauri/Cargo.lock
+
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
