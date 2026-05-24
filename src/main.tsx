@@ -15,7 +15,7 @@ import {
   Square,
   Video
 } from "lucide-react";
-import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import "./styles.css";
 
 type CommandResult<T> = {
@@ -78,6 +78,21 @@ type DownloadResult = {
   records: number;
 };
 
+type LibraryWallpaper = {
+  id: string;
+  kind: string;
+  source: string;
+  title: string;
+  author: string | null;
+  detailUrl: string;
+  remoteUrl: string;
+  filePath: string;
+  thumbnailUrl: string;
+  width: number | null;
+  height: number | null;
+  downloadedAt: string;
+};
+
 const isTauri = "__TAURI_INTERNALS__" in window;
 const keyStoragePrefix = "swallpaper.windows.apiKey.";
 
@@ -118,6 +133,7 @@ function App() {
   const [query, setQuery] = React.useState("anime landscape");
   const [apiKey, setApiKey] = React.useState("");
   const [items, setItems] = React.useState<WallpaperItem[]>([]);
+  const [libraryItems, setLibraryItems] = React.useState<LibraryWallpaper[]>([]);
   const [page, setPage] = React.useState(1);
   const [hasMore, setHasMore] = React.useState(false);
   const [isSearching, setIsSearching] = React.useState(false);
@@ -126,12 +142,17 @@ function App() {
   const activeSourceNeedsKey = activeSourceInfo?.capabilities.requiresApiKey ?? false;
 
   async function refreshLibrary() {
-    const result = await call<LibraryStatus>("library_status");
-    if (result.ok && result.data) {
-      setLibrary(result.data);
-      setStatus("Library status refreshed");
+    const [statusResult, itemsResult] = await Promise.all([
+      call<LibraryStatus>("library_status"),
+      call<LibraryWallpaper[]>("list_library_wallpapers")
+    ]);
+
+    if (statusResult.ok && statusResult.data) {
+      setLibrary(statusResult.data);
+      setLibraryItems(itemsResult.ok && itemsResult.data ? itemsResult.data : []);
+      setStatus("Library refreshed");
     } else {
-      setStatus(result.error ?? "Unable to read library status");
+      setStatus(statusResult.error ?? "Unable to read library status");
     }
   }
 
@@ -192,21 +213,29 @@ function App() {
     setStatus(result.data ?? result.error ?? "Static wallpaper command completed");
   }
 
-  async function downloadWallpaper(item: WallpaperItem) {
-    setStatus(`Downloading ${item.title}...`);
+  async function downloadWallpaper(item: WallpaperItem, applyAfterDownload = false) {
+    setStatus(applyAfterDownload ? `Preparing ${item.title}...` : `Downloading ${item.title}...`);
     const result = await call<DownloadResult>("download_wallpaper", { item });
     if (result.ok && result.data) {
-      setStatus(`Downloaded to ${result.data.filePath}`);
       setLibrary((current) => ({
         configured: true,
         provider: current?.provider ?? "local",
         root: current?.root ?? null,
         records: result.data!.records
       }));
-      void refreshLibrary();
+      await refreshLibrary();
+      if (applyAfterDownload) {
+        await setStaticWallpaper(result.data.filePath);
+      } else {
+        setStatus(`Downloaded to ${result.data.filePath}`);
+      }
     } else {
       setStatus(result.error ?? "Download failed");
     }
+  }
+
+  async function applyOnlineWallpaper(item: WallpaperItem) {
+    await downloadWallpaper(item, true);
   }
 
   async function startVideoHost() {
@@ -240,7 +269,8 @@ function App() {
   const milestones = [
     ["Static source APIs", "Wallhaven, Pexels, Unsplash, NASA APOD", "Implemented"],
     ["Source switching", "Unified source registry and key-aware UI", "Implemented"],
-    ["Static wallpaper", "Win32 SPI_SETDESKWALLPAPER bridge", "Ready"],
+    ["Static wallpaper", "Download-first Win32 wallpaper bridge", "Ready"],
+    ["Local library", "Browse downloaded wallpapers and re-apply", "Implemented"],
     ["Video host", "WorkerW/Progman desktop layer", "Next"]
   ];
 
@@ -356,7 +386,7 @@ function App() {
                         </p>
                       </div>
                       <div className="card-actions">
-                        <button onClick={() => setStaticWallpaper(item.imageUrl)} title="Set as static wallpaper">
+                        <button onClick={() => applyOnlineWallpaper(item)} title="Download and set as static wallpaper">
                           <Image size={17} />
                         </button>
                         <a href={item.detailUrl} target="_blank" rel="noreferrer" title="Open source page">
@@ -383,7 +413,7 @@ function App() {
             <div className="panel compact-panel" id="library">
               <div className="panel-title">
                 <Cloud size={19} />
-                <h2>Cloud Library</h2>
+                <h2>Local Library</h2>
               </div>
               <dl className="meta-list">
                 <div>
@@ -399,6 +429,28 @@ function App() {
                   <dd>{library?.records ?? 0}</dd>
                 </div>
               </dl>
+              <div className="library-list" aria-label="Downloaded wallpapers">
+                {libraryItems.length === 0 ? (
+                  <p className="library-empty">下载壁纸后会出现在这里。</p>
+                ) : (
+                  libraryItems.slice(0, 6).map((record) => (
+                    <article className="library-item" key={record.id}>
+                      <img
+                        src={record.thumbnailUrl || convertFileSrc(record.filePath)}
+                        alt={record.title}
+                        loading="lazy"
+                      />
+                      <div>
+                        <h3>{record.title}</h3>
+                        <p>{record.source}</p>
+                      </div>
+                      <button onClick={() => setStaticWallpaper(record.filePath)} title="Set downloaded wallpaper">
+                        <Image size={16} />
+                      </button>
+                    </article>
+                  ))
+                )}
+              </div>
             </div>
 
             <div className="panel compact-panel" id="video">

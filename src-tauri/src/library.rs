@@ -26,7 +26,7 @@ pub struct DownloadResult {
 
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct LibraryRecord {
+pub struct LibraryRecord {
     id: String,
     kind: String,
     source: String,
@@ -35,6 +35,23 @@ struct LibraryRecord {
     detail_url: String,
     remote_url: String,
     relative_file_path: String,
+    thumbnail_url: String,
+    width: Option<u32>,
+    height: Option<u32>,
+    downloaded_at: String,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LibraryWallpaper {
+    id: String,
+    kind: String,
+    source: String,
+    title: String,
+    author: Option<String>,
+    detail_url: String,
+    remote_url: String,
+    file_path: String,
     thumbnail_url: String,
     width: Option<u32>,
     height: Option<u32>,
@@ -102,6 +119,32 @@ pub fn status() -> LibraryStatus {
             records: 0,
         },
     }
+}
+
+pub fn wallpapers() -> Result<Vec<LibraryWallpaper>, String> {
+    let root = library_root()?;
+    ensure_layout(&root)?;
+
+    Ok(read_records(&root)
+        .into_iter()
+        .map(|record| {
+            let file_path = root.join(&record.relative_file_path).display().to_string();
+            LibraryWallpaper {
+                id: record.id,
+                kind: record.kind,
+                source: record.source,
+                title: record.title,
+                author: record.author,
+                detail_url: record.detail_url,
+                remote_url: record.remote_url,
+                file_path,
+                thumbnail_url: record.thumbnail_url,
+                width: record.width,
+                height: record.height,
+                downloaded_at: record.downloaded_at,
+            }
+        })
+        .collect())
 }
 
 pub async fn download_wallpaper(item: WallpaperItem) -> Result<DownloadResult, String> {

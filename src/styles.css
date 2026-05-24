@@ -427,6 +427,74 @@ h1 {
   font-weight: 800;
 }
 
+.library-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.library-empty {
+  margin: 0;
+  padding: 14px;
+  border: 1px dashed rgba(216, 242, 235, 0.18);
+  border-radius: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.library-item {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 38px;
+  gap: 10px;
+  align-items: center;
+  padding: 9px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.library-item img {
+  width: 58px;
+  aspect-ratio: 16 / 10;
+  border-radius: 9px;
+  object-fit: cover;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.library-item h3 {
+  display: -webkit-box;
+  margin-bottom: 4px;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.library-item p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.library-item button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  min-height: 36px;
+  border: 1px solid rgba(118, 230, 188, 0.32);
+  border-radius: 10px;
+  background: rgba(118, 230, 188, 0.12);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.library-item button:hover {
+  border-color: rgba(118, 230, 188, 0.68);
+  background: rgba(118, 230, 188, 0.2);
+}
+
 .timeline {
   display: grid;
   gap: 16px;
