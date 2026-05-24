@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import "./styles.css";
+import { t, getLang, setLang, getAvailableLangs, type Lang } from "./i18n";
 
 type CommandResult<T> = {
   ok: boolean;
@@ -239,6 +240,7 @@ function App() {
   });
   const [queueItems, setQueueItems] = React.useState<QueueItem[]>([]);
   const [rotateInterval, setRotateInterval] = React.useState<ReturnType<typeof setInterval> | null>(null);
+  const [lang, setLangState] = React.useState<Lang>(getLang());
 
   const activeSourceInfo = sources.find((source) => source.id === activeSource);
   const activeSourceNeedsKey = activeSourceInfo?.capabilities.requiresApiKey ?? false;
@@ -490,7 +492,7 @@ function App() {
     setNsfwEnabled((prev: boolean) => {
       const next = !prev;
       localStorage.setItem("swallpaper.nsfw", String(next));
-      if (next && !window.confirm("Adult content may include explicit material. Are you sure you want to enable it?")) {
+      if (next && !window.confirm(t("nsfwConfirm"))) {
         return prev;
       }
       return next;
@@ -998,7 +1000,22 @@ function App() {
                 <h3>Content</h3>
                 <div className="settings-row">
                   <span>Adult content</span>
-                  <button className={`nsfw-toggle ${nsfwEnabled ? "active" : ""}`} onClick={toggleNsfw}>{nsfwEnabled ? "ON" : "OFF"}</button>
+                  <button className={`nsfw-toggle ${nsfwEnabled ? "active" : ""}`} onClick={toggleNsfw}>{nsfwEnabled ? t("nsfwOn") : t("nsfwOff")}</button>
+                </div>
+              </div>
+              <div className="settings-section">
+                <h3>Language</h3>
+                <div className="settings-row" style={{ gap: 8 }}>
+                  {getAvailableLangs().map((l) => (
+                    <button key={l.code}
+                      onClick={() => { setLang(l.code); setLangState(l.code); }}
+                      style={{
+                        padding: "4px 12px", borderRadius: 8, border: lang === l.code ? "1px solid var(--accent)" : "1px solid var(--line)",
+                        background: lang === l.code ? "rgba(118,230,188,0.15)" : "transparent",
+                        color: lang === l.code ? "var(--accent)" : "var(--muted)", cursor: "pointer", fontSize: 13,
+                      }}
+                    >{l.name}</button>
+                  ))}
                 </div>
               </div>
               <div className="settings-section">
