@@ -20,6 +20,7 @@ pub struct LibraryStatus {
 #[serde(rename_all = "camelCase")]
 pub struct DownloadResult {
     id: String,
+    kind: String,
     file_path: String,
     records: u32,
 }
@@ -34,6 +35,7 @@ pub struct LibraryRecord {
     author: Option<String>,
     detail_url: String,
     remote_url: String,
+    video_url: Option<String>,
     relative_file_path: String,
     thumbnail_url: String,
     width: Option<u32>,
@@ -51,6 +53,7 @@ pub struct LibraryWallpaper {
     author: Option<String>,
     detail_url: String,
     remote_url: String,
+    video_url: Option<String>,
     file_path: String,
     thumbnail_url: String,
     width: Option<u32>,
@@ -76,6 +79,7 @@ fn ensure_layout(root: &Path) -> Result<(), String> {
     for path in [
         root.join("metadata"),
         root.join("files").join("wallpapers"),
+        root.join("files").join("videos"),
         root.join("thumbnails"),
         root.join("logs"),
     ] {
@@ -137,6 +141,7 @@ pub fn wallpapers() -> Result<Vec<LibraryWallpaper>, String> {
                 author: record.author,
                 detail_url: record.detail_url,
                 remote_url: record.remote_url,
+                video_url: record.video_url,
                 file_path,
                 thumbnail_url: record.thumbnail_url,
                 width: record.width,
@@ -151,8 +156,15 @@ pub async fn download_wallpaper(item: WallpaperItem) -> Result<DownloadResult, S
     let root = library_root()?;
     ensure_layout(&root)?;
 
+    let is_video = item.kind == "videoWallpaper";
+    let download_url = if is_video {
+        item.video_url.as_ref().ok_or("Video URL is missing.")?
+    } else {
+        &item.image_url
+    };
+
     let response = reqwest::Client::new()
-        .get(&item.image_url)
+        .get(download_url)
         .header("User-Agent", "Swallpaper-Windows/0.1")
         .send()
         .await
@@ -160,16 +172,24 @@ pub async fn download_wallpaper(item: WallpaperItem) -> Result<DownloadResult, S
         .error_for_status()
         .map_err(|error| format!("Download HTTP error: {error}"))?;
 
-    let extension = image_extension(&item.image_url, response.headers().get("content-type").and_then(|v| v.to_str().ok()));
+    let content_type = response
+        .headers()
+        .get("content-type")
+        .and_then(|v| v.to_str().ok());
+
+    let extension = file_extension(download_url, content_type, is_video);
     let safe_id = sanitize_filename(&item.id);
-    let relative = format!("files/wallpapers/{safe_id}.{extension}");
+    let subdir = if is_video { "files/videos" } else { "files/wallpapers" };
+    let relative = format!("{subdir}/{safe_id}.{extension}");
     let absolute = root.join(&relative);
+
     let bytes = response
         .bytes()
         .await
         .map_err(|error| format!("Unable to read download body: {error}"))?;
 
-    let mut file = fs::File::create(&absolute).map_err(|error| format!("Unable to create {}: {error}", absolute.display()))?;
+    let mut file = fs::File::create(&absolute)
+        .map_err(|error| format!("Unable to create {}: {error}", absolute.display()))?;
     file.write_all(&bytes)
         .map_err(|error| format!("Unable to write {}: {error}", absolute.display()))?;
 
@@ -179,12 +199,13 @@ pub async fn download_wallpaper(item: WallpaperItem) -> Result<DownloadResult, S
         0,
         LibraryRecord {
             id: item.id.clone(),
-            kind: "staticWallpaper".to_string(),
+            kind: item.kind.clone(),
             source: item.source,
             title: item.title,
             author: item.author,
             detail_url: item.detail_url,
             remote_url: item.image_url,
+            video_url: item.video_url,
             relative_file_path: relative,
             thumbnail_url: item.thumbnail_url,
             width: item.width,
@@ -196,26 +217,42 @@ pub async fn download_wallpaper(item: WallpaperItem) -> Result<DownloadResult, S
 
     Ok(DownloadResult {
         id: item.id,
+        kind: item.kind,
         file_path: absolute.display().to_string(),
         records: records.len() as u32,
     })
 }
 
-fn image_extension(url: &str, content_type: Option<&str>) -> &'static str {
+fn file_extension(url: &str, content_type: Option<&str>, is_video: bool) -> &'static str {
     if let Some(content_type) = content_type {
+        if content_type.contains("mp4") || content_type.contains("video/mp4") {
+            return "mp4";
+        }
+        if content_type.contains("webm") || content_type.contains("video/webm") {
+            return "webm";
+        }
         if content_type.contains("png") {
             return "png";
         }
         if content_type.contains("webp") {
             return "webp";
         }
+        if content_type.contains("jpeg") || content_type.contains("jpg") {
+            return "jpg";
+        }
     }
 
     let lower = url.split('?').next().unwrap_or(url).to_lowercase();
-    if lower.ends_with(".png") {
+    if lower.ends_with(".mp4") {
+        "mp4"
+    } else if lower.ends_with(".webm") {
+        "webm"
+    } else if lower.ends_with(".png") {
         "png"
     } else if lower.ends_with(".webp") {
         "webp"
+    } else if is_video {
+        "mp4"
     } else {
         "jpg"
     }

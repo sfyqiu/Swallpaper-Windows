@@ -48,11 +48,13 @@ type SourceInfo = {
 type WallpaperItem = {
   id: string;
   source: string;
+  kind: string;
   title: string;
   author: string | null;
   detailUrl: string;
   imageUrl: string;
   thumbnailUrl: string;
+  videoUrl: string | null;
   width: number | null;
   height: number | null;
   purity: string | null;
@@ -74,6 +76,7 @@ type SearchRequest = {
 
 type DownloadResult = {
   id: string;
+  kind: string;
   filePath: string;
   records: number;
 };
@@ -86,6 +89,7 @@ type LibraryWallpaper = {
   author: string | null;
   detailUrl: string;
   remoteUrl: string;
+  videoUrl: string | null;
   filePath: string;
   thumbnailUrl: string;
   width: number | null;
@@ -223,6 +227,7 @@ function App() {
   }
 
   async function downloadWallpaper(item: WallpaperItem, applyAfterDownload = false) {
+    const isVideo = item.kind === "videoWallpaper";
     setStatus(applyAfterDownload ? `Preparing ${item.title}...` : `Downloading ${item.title}...`);
     const result = await call<DownloadResult>("download_wallpaper", { item });
     if (result.ok && result.data) {
@@ -234,7 +239,11 @@ function App() {
       }));
       await refreshLibrary();
       if (applyAfterDownload) {
-        await setStaticWallpaper(result.data.filePath);
+        if (isVideo) {
+          await startVideoWallpaper(result.data.filePath);
+        } else {
+          await setStaticWallpaper(result.data.filePath);
+        }
       } else {
         setStatus(`Downloaded to ${result.data.filePath}`);
       }
@@ -245,6 +254,14 @@ function App() {
 
   async function applyOnlineWallpaper(item: WallpaperItem) {
     await downloadWallpaper(item, true);
+  }
+
+  async function applyLibraryItem(record: LibraryWallpaper) {
+    if (record.kind === "videoWallpaper") {
+      await startVideoWallpaper(record.filePath);
+    } else {
+      await setStaticWallpaper(record.filePath);
+    }
   }
 
   async function startVideoWallpaper(path: string) {
@@ -430,13 +447,21 @@ function App() {
               <div className="wallpaper-grid">
                 {items.map((item) => (
                   <article className="wallpaper-card" key={item.id}>
-                    <img src={item.thumbnailUrl} alt={item.title} loading="lazy" />
+                    <div className="card-thumb-wrap">
+                      <img src={item.thumbnailUrl} alt={item.title} loading="lazy" />
+                      {item.kind === "videoWallpaper" && (
+                        <span className="media-badge video-badge">
+                          <Video size={13} />
+                        </span>
+                      )}
+                    </div>
                     <div className="wallpaper-card-body">
                       <div>
                         <h3>{item.title}</h3>
                         <p>
                           {item.author ?? item.source}
                           {item.width && item.height ? ` · ${item.width}x${item.height}` : ""}
+                          {item.kind === "videoWallpaper" ? " · Video" : ""}
                         </p>
                       </div>
                       <div className="card-actions">
@@ -498,8 +523,8 @@ function App() {
                         <h3>{record.title}</h3>
                         <p>{record.source}</p>
                       </div>
-                      <button onClick={() => setStaticWallpaper(record.filePath)} title="Set downloaded wallpaper">
-                        <Image size={16} />
+                      <button onClick={() => applyLibraryItem(record)} title={record.kind === "videoWallpaper" ? "Set as video wallpaper" : "Set as static wallpaper"}>
+                        {record.kind === "videoWallpaper" ? <Video size={16} /> : <Image size={16} />}
                       </button>
                     </article>
                   ))
