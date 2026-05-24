@@ -1,7 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import {
-  BatteryCharging,
   Cloud,
   Download,
   ExternalLink,
@@ -9,6 +8,7 @@ import {
   Image,
   KeyRound,
   Monitor,
+  Pause,
   Play,
   RefreshCw,
   Search,
@@ -93,6 +93,13 @@ type LibraryWallpaper = {
   downloadedAt: string;
 };
 
+type VideoWallpaperStatus = {
+  active: boolean;
+  paused: boolean;
+  monitorCount: number;
+  currentPath: string | null;
+};
+
 const isTauri = "__TAURI_INTERNALS__" in window;
 const keyStoragePrefix = "swallpaper.windows.apiKey.";
 
@@ -137,6 +144,8 @@ function App() {
   const [page, setPage] = React.useState(1);
   const [hasMore, setHasMore] = React.useState(false);
   const [isSearching, setIsSearching] = React.useState(false);
+  const [videoPath, setVideoPath] = React.useState("");
+  const [videoStatus, setVideoStatus] = React.useState<VideoWallpaperStatus | null>(null);
 
   const activeSourceInfo = sources.find((source) => source.id === activeSource);
   const activeSourceNeedsKey = activeSourceInfo?.capabilities.requiresApiKey ?? false;
@@ -238,21 +247,66 @@ function App() {
     await downloadWallpaper(item, true);
   }
 
-  async function startVideoHost() {
-    const result = await call<string>("start_video_wallpaper", {
-      path: "C:\\\\Users\\\\Public\\\\Videos\\\\sample.mp4"
-    });
-    setStatus(result.data ?? result.error ?? "Video wallpaper command completed");
+  async function startVideoWallpaper(path: string) {
+    if (!path.trim()) {
+      setStatus("Enter a video file path to start.");
+      return;
+    }
+    setStatus(`Starting video wallpaper: ${path}...`);
+    const result = await call<string>("start_video_wallpaper", { path });
+    if (result.ok) {
+      setStatus(result.data ?? "Video wallpaper started");
+      await refreshVideoStatus();
+    } else {
+      setStatus(result.error ?? "Failed to start video wallpaper");
+    }
   }
 
-  async function stopVideoHost() {
+  async function stopVideoWallpaper() {
+    setStatus("Stopping video wallpaper...");
     const result = await call<string>("stop_video_wallpaper");
-    setStatus(result.data ?? result.error ?? "Stop command completed");
+    if (result.ok) {
+      setStatus(result.data ?? "Video wallpaper stopped");
+      setVideoStatus(null);
+    } else {
+      setStatus(result.error ?? "Failed to stop video wallpaper");
+    }
+  }
+
+  async function pauseVideoWallpaper() {
+    const result = await call<string>("pause_video_wallpaper");
+    if (result.ok) {
+      setStatus("Video wallpaper paused");
+      await refreshVideoStatus();
+    } else {
+      setStatus(result.error ?? "Failed to pause");
+    }
+  }
+
+  async function resumeVideoWallpaper() {
+    const result = await call<string>("resume_video_wallpaper");
+    if (result.ok) {
+      setStatus("Video wallpaper resumed");
+      await refreshVideoStatus();
+    } else {
+      setStatus(result.error ?? "Failed to resume");
+    }
+  }
+
+  async function refreshVideoStatus() {
+    const result = await call<VideoWallpaperStatus>("video_wallpaper_status");
+    if (result.ok && result.data) {
+      setVideoStatus(result.data);
+      if (result.data.currentPath) {
+        setVideoPath(result.data.currentPath);
+      }
+    }
   }
 
   React.useEffect(() => {
     void loadSources();
     void refreshLibrary();
+    void refreshVideoStatus();
   }, []);
 
   React.useEffect(() => {
@@ -271,7 +325,7 @@ function App() {
     ["Source switching", "Unified source registry and key-aware UI", "Implemented"],
     ["Static wallpaper", "Download-first Win32 wallpaper bridge", "Ready"],
     ["Local library", "Browse downloaded wallpapers and re-apply", "Implemented"],
-    ["Video host", "WorkerW/Progman desktop layer", "Next"]
+    ["Video wallpaper", "WorkerW desktop layer + video engine", "Implemented"]
   ];
 
   return (
@@ -455,10 +509,63 @@ function App() {
 
             <div className="panel compact-panel" id="video">
               <div className="panel-title">
-                <BatteryCharging size={19} />
-                <h2>Native Roadmap</h2>
+                <Video size={19} />
+                <h2>Video Wallpaper</h2>
               </div>
-              <div className="timeline">
+
+              {videoStatus?.active ? (
+                <div className="video-status">
+                  <dl className="meta-list">
+                    <div>
+                      <dt>State</dt>
+                      <dd>{videoStatus.paused ? "Paused" : "Playing"}</dd>
+                    </div>
+                    <div>
+                      <dt>Monitors</dt>
+                      <dd>{videoStatus.monitorCount}</dd>
+                    </div>
+                    <div>
+                      <dt>File</dt>
+                      <dd className="truncate">{videoStatus.currentPath ?? "—"}</dd>
+                    </div>
+                  </dl>
+                  <div className="engine-actions">
+                    {videoStatus.paused ? (
+                      <button onClick={resumeVideoWallpaper}>
+                        <Play size={17} /> Resume
+                      </button>
+                    ) : (
+                      <button onClick={pauseVideoWallpaper}>
+                        <Pause size={17} /> Pause
+                      </button>
+                    )}
+                    <button onClick={stopVideoWallpaper}>
+                      <Square size={17} /> Stop
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="video-start">
+                  <label className="field">
+                    <span>Video file path</span>
+                    <div className="input-row">
+                      <Video size={18} />
+                      <input
+                        value={videoPath}
+                        onChange={(e) => setVideoPath(e.target.value)}
+                        placeholder="C:\Users\Public\Videos\wallpaper.mp4"
+                      />
+                    </div>
+                  </label>
+                  <div className="engine-actions">
+                    <button onClick={() => startVideoWallpaper(videoPath)}>
+                      <Play size={17} /> Start video wallpaper
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="timeline" style={{ marginTop: 18 }}>
                 {milestones.map(([title, detail, state]) => (
                   <article className="timeline-item" key={title}>
                     <span />
@@ -469,14 +576,6 @@ function App() {
                     </div>
                   </article>
                 ))}
-              </div>
-              <div className="engine-actions">
-                <button onClick={startVideoHost}>
-                  <Play size={17} /> Start video placeholder
-                </button>
-                <button onClick={stopVideoHost}>
-                  <Square size={17} /> Stop
-                </button>
               </div>
             </div>
           </div>

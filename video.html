@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Swallpaper Video</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #000; cursor: none; user-select: none; }
+    video { display: block; width: 100%; height: 100%; object-fit: cover; }
+  </style>
+</head>
+<body>
+  <video autoplay loop muted playsinline></video>
+  <script>
+    (function () {
+      var video = document.querySelector('video');
+      var params = new URLSearchParams(window.location.search);
+      var path = params.get('path');
+      if (path) {
+        var normalized = path.replace(/\\/g, '/');
+        video.src = normalized.startsWith('/') ? 'file://' + normalized : 'file:///' + normalized;
+      }
+
+      window.addEventListener('swallpaper:action', function (event) {
+        if (!event || !event.detail) return;
+        var detail = event.detail;
+        if (typeof detail === 'string') {
+          try { detail = JSON.parse(detail); } catch (_) {}
+        }
+        if (detail.action === 'pause')  video.pause();
+        if (detail.action === 'resume') video.play();
+        if (detail.action === 'stop')   { video.pause(); video.currentTime = 0; }
+        if (detail.action === 'load' && detail.path) {
+          var p = detail.path.replace(/\\/g, '/');
+          video.src = p.startsWith('/') ? 'file://' + p : 'file:///' + p;
+          video.play();
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

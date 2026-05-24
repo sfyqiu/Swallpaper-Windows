@@ -2,19 +2,52 @@ mod library;
 mod sources;
 mod wallpaper;
 
+use std::sync::Mutex;
+use wallpaper::VideoWallpaperState;
+
 #[tauri::command]
 fn set_static_wallpaper(path: String) -> Result<String, String> {
     wallpaper::set_static_wallpaper(&path)
 }
 
 #[tauri::command]
-fn start_video_wallpaper(path: String) -> Result<String, String> {
-    wallpaper::start_video_wallpaper(&path)
+fn start_video_wallpaper(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, Mutex<VideoWallpaperState>>,
+    path: String,
+) -> Result<String, String> {
+    wallpaper::start_video_wallpaper(&app, &state, &path)
 }
 
 #[tauri::command]
-fn stop_video_wallpaper() -> Result<String, String> {
-    wallpaper::stop_video_wallpaper()
+fn stop_video_wallpaper(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, Mutex<VideoWallpaperState>>,
+) -> Result<String, String> {
+    wallpaper::stop_video_wallpaper(&app, &state)
+}
+
+#[tauri::command]
+fn pause_video_wallpaper(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, Mutex<VideoWallpaperState>>,
+) -> Result<String, String> {
+    wallpaper::pause_video_wallpaper(&app, &state)
+}
+
+#[tauri::command]
+fn resume_video_wallpaper(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, Mutex<VideoWallpaperState>>,
+) -> Result<String, String> {
+    wallpaper::resume_video_wallpaper(&app, &state)
+}
+
+#[tauri::command]
+fn video_wallpaper_status(
+    state: tauri::State<'_, Mutex<VideoWallpaperState>>,
+) -> Result<wallpaper::VideoWallpaperStatus, String> {
+    wallpaper::video_wallpaper_status(&state)
 }
 
 #[tauri::command]
@@ -44,10 +77,14 @@ async fn search_wallpapers(request: sources::SearchRequest) -> Result<sources::S
 
 pub fn run() {
     tauri::Builder::default()
+        .manage(Mutex::new(VideoWallpaperState::new()))
         .invoke_handler(tauri::generate_handler![
             set_static_wallpaper,
             start_video_wallpaper,
             stop_video_wallpaper,
+            pause_video_wallpaper,
+            resume_video_wallpaper,
+            video_wallpaper_status,
             library_status,
             list_library_wallpapers,
             download_wallpaper,
