@@ -27,6 +27,12 @@
     "active": true,
     "targets": ["msi", "nsis"],
     "category": "Utility",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
     "shortDescription": "Windows wallpaper engine for Swallpaper",
     "longDescription": "A Windows wallpaper engine prototype for Swallpaper, built with Tauri, Rust, and React."
   }
