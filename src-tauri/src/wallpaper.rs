@@ -7,20 +7,16 @@ pub fn set_static_wallpaper(path: &str) -> Result<String, String> {
     };
 
     let wide: Vec<u16> = path.encode_utf16().chain(once(0)).collect();
-    let ok = unsafe {
+    unsafe {
         SystemParametersInfoW(
             SPI_SETDESKWALLPAPER,
             0,
             Some(PCWSTR(wide.as_ptr()).0 as *mut _),
             SPIF_UPDATEINIFILE | SPIF_SENDWININICHANGE,
         )
-    };
-
-    if ok.as_bool() {
-        Ok(format!("Static wallpaper set: {path}"))
-    } else {
-        Err("Windows rejected the wallpaper path.".to_string())
     }
+    .map(|_| format!("Static wallpaper set: {path}"))
+    .map_err(|error| format!("Windows rejected the wallpaper path: {error}"))
 }
 
 #[cfg(not(windows))]
