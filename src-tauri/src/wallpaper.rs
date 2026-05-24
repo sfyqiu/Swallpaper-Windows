@@ -326,7 +326,7 @@ unsafe extern "system" fn monitor_enum_callback(
         hmonitor,
         &mut info as *mut MONITORINFOEXW as *mut _,
     )
-    .is_ok()
+    .as_bool()
     {
         let r = info.monitorInfo.rcWork;
         if let Ok(mut guard) = ctx.lock() {
@@ -390,7 +390,7 @@ unsafe extern "system" fn workerw_enum_callback(
     let ctx = &*ctx_ptr;
 
     let mut class_buf = [0u16; 64];
-    let len = GetClassNameW(hwnd, Some(&mut class_buf));
+    let len = GetClassNameW(hwnd, &mut class_buf);
     let class_name = String::from_utf16_lossy(&class_buf[..len as usize]);
 
     if class_name != "WorkerW" {
