@@ -1018,7 +1018,7 @@ function App() {
               <div className="settings-section">
                 <h3><Info size={16} /> About</h3>
                 <dl className="meta-list">
-                  <div><dt>Version</dt><dd>v0.1.2</dd></div>
+                  <div><dt>Version</dt><dd>v0.1.3</dd></div>
                   <div><dt>Build</dt><dd>Tauri 2 + React + Rust</dd></div>
                 </dl>
                 <div className="engine-actions" style={{ marginTop: 10 }}>
