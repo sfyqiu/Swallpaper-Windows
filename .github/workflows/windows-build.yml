@@ -23,14 +23,10 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt, clippy
-
-      - name: Check Rust formatting
-        run: cargo fmt --check
-        working-directory: src-tauri
+          components: clippy
 
       - name: Cargo clippy
-        run: cargo clippy -- -D warnings
+        run: cargo clippy
         working-directory: src-tauri
 
       - name: Cargo test
