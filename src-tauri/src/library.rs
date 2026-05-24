@@ -345,3 +345,51 @@ pub fn list_favorites() -> Result<Vec<LibraryWallpaper>, String> {
         })
         .collect())
 }
+
+// ---- Tests ----
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sanitize_filename() {
+        let result = sanitize_filename("hello/world:test.png");
+        assert_eq!(result, "hello-world-test-png");
+    }
+
+    #[test]
+    fn test_sanitize_filename_simple() {
+        let result = sanitize_filename("my-wallpaper_01");
+        assert_eq!(result, "my-wallpaper_01");
+    }
+
+    #[test]
+    fn test_image_extension_from_url() {
+        assert_eq!(file_extension("https://x.com/img.png", None, false), "png");
+        assert_eq!(file_extension("https://x.com/img.webp", None, false), "webp");
+        assert_eq!(file_extension("https://x.com/img.jpg", None, false), "jpg");
+        assert_eq!(file_extension("https://x.com/video.mp4", None, false), "mp4");
+        assert_eq!(file_extension("https://x.com/video.webm", None, false), "webm");
+    }
+
+    #[test]
+    fn test_image_extension_from_content_type() {
+        assert_eq!(file_extension("", Some("image/png"), false), "png");
+        assert_eq!(file_extension("", Some("image/webp"), false), "webp");
+        assert_eq!(file_extension("", Some("video/mp4"), false), "mp4");
+    }
+
+    #[test]
+    fn test_video_extension_fallback() {
+        // For videos with no recognizable extension, default to mp4
+        assert_eq!(file_extension("https://x.com/stream", None, true), "mp4");
+    }
+
+    #[test]
+    fn test_now_utc_string_is_numeric() {
+        let ts = now_utc_string();
+        let n: u64 = ts.parse().unwrap();
+        assert!(n > 1700000000); // after 2023
+    }
+}

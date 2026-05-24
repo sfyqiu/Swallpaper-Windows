@@ -1240,3 +1240,81 @@ async fn scan_we_workshop(request: SearchRequest) -> Result<SearchResponse, Stri
         items: paged,
     })
 }
+
+// ---- Tests ----
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_clean_query_default() {
+        assert_eq!(clean_query(None, "fallback"), "fallback");
+        assert_eq!(clean_query(Some("  ".to_string()), "fallback"), "fallback");
+        assert_eq!(clean_query(Some("hello".to_string()), "fallback"), "hello");
+    }
+
+    #[test]
+    fn test_clean_api_key() {
+        assert_eq!(clean_api_key(None), None);
+        assert_eq!(clean_api_key(Some("  ".to_string())), None);
+        assert_eq!(clean_api_key(Some("abc123".to_string())), Some("abc123".to_string()));
+    }
+
+    #[test]
+    fn test_is_nsfw_disabled_by_default() {
+        let req = SearchRequest {
+            source: "wallhaven".to_string(),
+            query: None,
+            page: None,
+            api_key: None,
+            media_type: None,
+            nsfw_enabled: None,
+        };
+        assert!(!is_nsfw_enabled(&req));
+    }
+
+    #[test]
+    fn test_is_nsfw_enabled() {
+        let req = SearchRequest {
+            source: "wallhaven".to_string(),
+            query: None,
+            page: None,
+            api_key: None,
+            media_type: None,
+            nsfw_enabled: Some(true),
+        };
+        assert!(is_nsfw_enabled(&req));
+    }
+
+    #[test]
+    fn test_parse_fourk_html_empty() {
+        let items = parse_fourk_html("");
+        assert!(items.is_empty());
+    }
+
+    #[test]
+    fn test_parse_fourk_html_with_card() {
+        let html = r#"<div data-wallpaper-id="12345"><img data-src="https://example.com/thumb.jpg" alt="Test Wallpaper" /></div>"#;
+        let items = parse_fourk_html(html);
+        assert!(!items.is_empty());
+        assert_eq!(items[0].id, "fourk-12345");
+        assert_eq!(items[0].kind, "staticWallpaper");
+    }
+
+    #[test]
+    fn test_list_sources_count() {
+        let sources = list_sources();
+        assert!(sources.len() >= 10);
+    }
+
+    #[test]
+    fn test_source_ids_unique() {
+        let sources = list_sources();
+        let mut ids: Vec<&str> = sources.iter().map(|s| s.id).collect();
+        ids.sort();
+        let orig_len = ids.len();
+        ids.dedup();
+        assert_eq!(ids.len(), orig_len, "Source IDs must be unique");
+    }
+}

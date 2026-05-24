@@ -647,3 +647,59 @@ fn uuid_v4() -> String {
         buf[10], buf[11], buf[12], buf[13], buf[14], buf[15],
     )
 }
+
+// ---- Tests ----
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_uuid_v4_format() {
+        let id = uuid_v4();
+        assert_eq!(id.len(), 36);
+        assert_eq!(id.chars().filter(|&c| c == '-').count(), 4);
+        // Check version nibble is 4
+        let parts: Vec<&str> = id.split('-').collect();
+        assert_eq!(parts.len(), 5);
+    }
+
+    #[test]
+    fn test_now_iso_string_format() {
+        let ts = now_iso_string();
+        assert!(ts.ends_with("Z"));
+        assert!(ts.contains('T'));
+        assert_eq!(ts.len(), 20); // YYYY-MM-DDTHH:MM:SSZ
+    }
+
+    #[test]
+    fn test_is_leap() {
+        assert!(is_leap(2024));
+        assert!(!is_leap(2023));
+        assert!(is_leap(2000));
+        assert!(!is_leap(1900));
+    }
+
+    #[test]
+    fn test_sync_config_default() {
+        let config = SyncConfig::default_config();
+        assert!(!config.enabled);
+        assert_eq!(config.mode, "manual");
+        assert!(config.provider.is_none());
+    }
+
+    #[test]
+    fn test_detect_provider_path_empty() {
+        // custom provider should return None (no fixed path)
+        assert!(detect_provider_path("custom").is_none());
+    }
+
+    #[test]
+    fn test_list_providers_count() {
+        let providers = list_providers();
+        assert_eq!(providers.len(), 7);
+        let ids: Vec<&str> = providers.iter().map(|p| p.id.as_str()).collect();
+        assert!(ids.contains(&"onedrive"));
+        assert!(ids.contains(&"custom"));
+    }
+}

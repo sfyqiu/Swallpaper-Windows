@@ -493,3 +493,44 @@ fn inject_into_desktop(
 fn rects_overlap(a: &MonitorRect, b: &MonitorRect) -> bool {
     a.0 < b.2 && a.2 > b.0 && a.1 < b.3 && a.3 > b.1
 }
+
+// ---- Tests ----
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_rects_overlap_yes() {
+        let a = (0, 0, 100, 100);
+        let b = (50, 50, 150, 150);
+        assert!(rects_overlap(&a, &b));
+    }
+
+    #[test]
+    fn test_rects_overlap_no() {
+        let a = (0, 0, 100, 100);
+        let b = (200, 200, 300, 300);
+        assert!(!rects_overlap(&a, &b));
+    }
+
+    #[test]
+    fn test_rects_overlap_contained() {
+        let a = (0, 0, 1000, 1000);
+        let b = (100, 100, 200, 200);
+        assert!(rects_overlap(&a, &b));
+    }
+
+    #[test]
+    fn test_rects_overlap_touching_edge() {
+        let a = (0, 0, 100, 100);
+        let b = (100, 100, 200, 200);
+        assert!(!rects_overlap(&a, &b));
+    }
+
+    #[test]
+    fn test_rects_overlap_identical() {
+        let a = (0, 0, 1920, 1080);
+        assert!(rects_overlap(&a, &a));
+    }
+}
