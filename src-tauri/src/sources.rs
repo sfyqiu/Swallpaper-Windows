@@ -341,8 +341,9 @@ async fn search_wallhaven(request: SearchRequest) -> Result<SearchResponse, Stri
     }
 
     let page = request.page.unwrap_or(1).max(1);
+    let nsfw = is_nsfw_enabled(&request);
     let query = request.query.unwrap_or_default();
-    let purity = if is_nsfw_enabled(&request) { "110" } else { "100" };
+    let purity = if nsfw { "110" } else { "100" };
     let mut url = format!(
         "https://wallhaven.cc/api/v1/search?q={}&categories=111&purity={purity}&sorting=date_added&order=desc&page={page}",
         urlencoding::encode(query.trim())
