@@ -29,7 +29,7 @@ pub struct SourceInfo {
     pub capabilities: SourceCapabilities,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WallpaperItem {
     pub id: String,

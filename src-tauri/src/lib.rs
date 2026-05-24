@@ -23,6 +23,11 @@ fn library_status() -> library::LibraryStatus {
 }
 
 #[tauri::command]
+async fn download_wallpaper(item: sources::WallpaperItem) -> Result<library::DownloadResult, String> {
+    library::download_wallpaper(item).await
+}
+
+#[tauri::command]
 fn list_wallpaper_sources() -> Vec<sources::SourceInfo> {
     sources::list_sources()
 }
@@ -39,6 +44,7 @@ pub fn run() {
             start_video_wallpaper,
             stop_video_wallpaper,
             library_status,
+            download_wallpaper,
             list_wallpaper_sources,
             search_wallpapers
         ])

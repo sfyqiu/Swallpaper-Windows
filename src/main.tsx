@@ -72,6 +72,12 @@ type SearchRequest = {
   apiKey?: string;
 };
 
+type DownloadResult = {
+  id: string;
+  filePath: string;
+  records: number;
+};
+
 const isTauri = "__TAURI_INTERNALS__" in window;
 const keyStoragePrefix = "swallpaper.windows.apiKey.";
 
@@ -184,6 +190,23 @@ function App() {
   async function setStaticWallpaper(path: string) {
     const result = await call<string>("set_static_wallpaper", { path });
     setStatus(result.data ?? result.error ?? "Static wallpaper command completed");
+  }
+
+  async function downloadWallpaper(item: WallpaperItem) {
+    setStatus(`Downloading ${item.title}...`);
+    const result = await call<DownloadResult>("download_wallpaper", { item });
+    if (result.ok && result.data) {
+      setStatus(`Downloaded to ${result.data.filePath}`);
+      setLibrary((current) => ({
+        configured: true,
+        provider: current?.provider ?? "local",
+        root: current?.root ?? null,
+        records: result.data!.records
+      }));
+      void refreshLibrary();
+    } else {
+      setStatus(result.error ?? "Download failed");
+    }
   }
 
   async function startVideoHost() {
@@ -339,9 +362,9 @@ function App() {
                         <a href={item.detailUrl} target="_blank" rel="noreferrer" title="Open source page">
                           <ExternalLink size={17} />
                         </a>
-                        <a href={item.imageUrl} target="_blank" rel="noreferrer" title="Open full image">
+                        <button onClick={() => downloadWallpaper(item)} title="Download to Swallpaper Library">
                           <Download size={17} />
-                        </a>
+                        </button>
                       </div>
                     </div>
                   </article>
