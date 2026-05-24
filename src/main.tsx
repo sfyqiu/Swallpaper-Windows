@@ -5,6 +5,7 @@ import {
   Download,
   ExternalLink,
   FolderOpen,
+  Heart,
   Image,
   KeyRound,
   Monitor,
@@ -13,7 +14,10 @@ import {
   RefreshCw,
   Search,
   Square,
-  Video
+  Star,
+  Video,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import "./styles.css";
@@ -72,6 +76,8 @@ type SearchRequest = {
   query?: string;
   page?: number;
   apiKey?: string;
+  mediaType?: string;
+  nsfwEnabled?: boolean;
 };
 
 type DownloadResult = {
@@ -146,6 +152,14 @@ type SyncStatus = {
   } | null;
 };
 
+type ApiTestResult = {
+  sourceId: string;
+  sourceName: string;
+  ok: boolean;
+  latencyMs: number;
+  error: string | null;
+};
+
 const isTauri = "__TAURI_INTERNALS__" in window;
 const keyStoragePrefix = "swallpaper.windows.apiKey.";
 
@@ -196,6 +210,10 @@ function App() {
   const [syncConfig, setSyncConfig] = React.useState<SyncConfig | null>(null);
   const [syncStatus, setSyncStatus] = React.useState<SyncStatus | null>(null);
   const [syncMsg, setSyncMsg] = React.useState("");
+  const [nsfwEnabled, setNsfwEnabled] = React.useState(() => localStorage.getItem("swallpaper.nsfw") === "true");
+  const [apiResults, setApiResults] = React.useState<ApiTestResult[] | null>(null);
+  const [isTesting, setIsTesting] = React.useState(false);
+  const [favoriteIds, setFavoriteIds] = React.useState<Set<string>>(new Set());
 
   const activeSourceInfo = sources.find((source) => source.id === activeSource);
   const activeSourceNeedsKey = activeSourceInfo?.capabilities.requiresApiKey ?? false;
@@ -246,7 +264,8 @@ function App() {
       source: activeSource,
       query,
       page: nextPage,
-      apiKey: apiKey.trim() || undefined
+      apiKey: apiKey.trim() || undefined,
+      nsfwEnabled,
     };
     setIsSearching(true);
     setStatus(`Searching ${activeSourceInfo?.name ?? activeSource}...`);
@@ -417,6 +436,42 @@ function App() {
     await loadSyncInfo();
   }
 
+  async function testApis() {
+    setIsTesting(true);
+    setApiResults(null);
+    const result = await call<ApiTestResult[]>("test_api_connectivity");
+    setIsTesting(false);
+    if (result.ok && result.data) {
+      setApiResults(result.data);
+      const okCount = result.data.filter((r) => r.ok).length;
+      setStatus(`API test: ${okCount}/${result.data.length} sources reachable`);
+    } else {
+      setStatus(result.error ?? "API test failed");
+    }
+  }
+
+  async function toggleFavoriteItem(id: string) {
+    const result = await call<string>("toggle_favorite", { id });
+    if (result.ok) {
+      setFavoriteIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id); else next.add(id);
+        return next;
+      });
+    }
+  }
+
+  function toggleNsfw() {
+    setNsfwEnabled((prev: boolean) => {
+      const next = !prev;
+      localStorage.setItem("swallpaper.nsfw", String(next));
+      if (next && !window.confirm("Adult content may include explicit material. Are you sure you want to enable it?")) {
+        return prev;
+      }
+      return next;
+    });
+  }
+
   React.useEffect(() => {
     void loadSources();
     void refreshLibrary();
@@ -522,11 +577,39 @@ function App() {
             </div>
           </label>
 
-          <button className="primary-action" disabled={isSearching} onClick={() => searchWallpapers(1, false)}>
-            <RefreshCw size={18} />
-            {isSearching ? "Loading" : "Search"}
-          </button>
+          <div className="search-actions">
+            <button className="primary-action" disabled={isSearching} onClick={() => searchWallpapers(1, false)}>
+              <RefreshCw size={18} />
+              {isSearching ? "Loading" : "Search"}
+            </button>
+            <button className="secondary-action" disabled={isTesting} onClick={testApis}>
+              {isTesting ? <RefreshCw size={16} className="spin" /> : <Wifi size={16} />}
+              Test APIs
+            </button>
+            {activeSourceInfo?.capabilities.supportsNsfw && (
+              <button
+                className={`nsfw-toggle ${nsfwEnabled ? "active" : ""}`}
+                onClick={toggleNsfw}
+                title={nsfwEnabled ? "NSFW enabled" : "SFW only"}
+              >
+                {nsfwEnabled ? "NSFW" : "SFW"}
+              </button>
+            )}
+          </div>
         </section>
+
+        {apiResults && (
+          <section className="api-results">
+            {apiResults.map((r) => (
+              <div key={r.sourceId} className="api-result-item">
+                <span className={`dot ${r.ok ? "ok" : "fail"}`} />
+                <span className="name">{r.sourceName}</span>
+                <span className="latency">{r.latencyMs}ms</span>
+                {r.error && <span className="error-msg">{r.error}</span>}
+              </div>
+            ))}
+          </section>
+        )}
 
         <section className="workspace">
           <div className="panel results-panel">
@@ -563,7 +646,7 @@ function App() {
                         </p>
                       </div>
                       <div className="card-actions">
-                        <button onClick={() => applyOnlineWallpaper(item)} title="Download and set as static wallpaper">
+                        <button onClick={() => applyOnlineWallpaper(item)} title="Download and set as wallpaper">
                           <Image size={17} />
                         </button>
                         <a href={item.detailUrl} target="_blank" rel="noreferrer" title="Open source page">
@@ -571,6 +654,13 @@ function App() {
                         </a>
                         <button onClick={() => downloadWallpaper(item)} title="Download to Swallpaper Library">
                           <Download size={17} />
+                        </button>
+                        <button
+                          onClick={() => toggleFavoriteItem(item.id)}
+                          title={favoriteIds.has(item.id) ? "Remove from favorites" : "Add to favorites"}
+                          style={favoriteIds.has(item.id) ? { color: "var(--amber)" } : {}}
+                        >
+                          <Star size={17} />
                         </button>
                       </div>
                     </div>

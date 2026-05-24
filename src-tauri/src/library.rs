@@ -279,3 +279,69 @@ fn now_utc_string() -> String {
         .unwrap_or_default();
     format!("{seconds}")
 }
+
+// ---- Favorites ----
+
+fn favorites_path(root: &Path) -> PathBuf {
+    root.join("metadata").join("favorites.json")
+}
+
+fn read_favorite_ids(root: &Path) -> Vec<String> {
+    let path = favorites_path(root);
+    fs::read(&path)
+        .ok()
+        .and_then(|data| serde_json::from_slice::<Vec<String>>(&data).ok())
+        .unwrap_or_default()
+}
+
+fn write_favorite_ids(root: &Path, ids: &[String]) -> Result<(), String> {
+    let path = favorites_path(root);
+    let data = serde_json::to_vec_pretty(ids)
+        .map_err(|e| format!("Cannot encode favorites: {e}"))?;
+    fs::write(&path, data)
+        .map_err(|e| format!("Cannot write favorites: {e}"))
+}
+
+pub fn toggle_favorite(id: &str) -> Result<String, String> {
+    let root = library_root()?;
+    ensure_layout(&root)?;
+    let mut ids = read_favorite_ids(&root);
+    if ids.contains(&id.to_string()) {
+        ids.retain(|i| i != id);
+        write_favorite_ids(&root, &ids)?;
+        Ok("Removed from favorites.".to_string())
+    } else {
+        ids.push(id.to_string());
+        write_favorite_ids(&root, &ids)?;
+        Ok("Added to favorites.".to_string())
+    }
+}
+
+pub fn list_favorites() -> Result<Vec<LibraryWallpaper>, String> {
+    let root = library_root()?;
+    ensure_layout(&root)?;
+    let fav_ids = read_favorite_ids(&root);
+    let all_records = read_records(&root);
+    Ok(all_records
+        .into_iter()
+        .filter(|r| fav_ids.contains(&r.id))
+        .map(|record| {
+            let file_path = root.join(&record.relative_file_path).display().to_string();
+            LibraryWallpaper {
+                id: record.id,
+                kind: record.kind,
+                source: record.source,
+                title: record.title,
+                author: record.author,
+                detail_url: record.detail_url,
+                remote_url: record.remote_url,
+                video_url: record.video_url,
+                file_path,
+                thumbnail_url: record.thumbnail_url,
+                width: record.width,
+                height: record.height,
+                downloaded_at: record.downloaded_at,
+            }
+        })
+        .collect())
+}

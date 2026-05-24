@@ -219,7 +219,7 @@ h1 {
 
 .search-panel {
   display: grid;
-  grid-template-columns: minmax(220px, 1.1fr) minmax(220px, 0.9fr) 150px;
+  grid-template-columns: minmax(220px, 1.1fr) minmax(220px, 0.9fr) auto;
   gap: 14px;
   align-items: end;
   margin-bottom: 18px;
@@ -291,10 +291,117 @@ h1 {
 .load-more:hover,
 .engine-actions button:hover,
 .card-actions button:hover,
-.card-actions a:hover {
+.card-actions a:hover,
+.secondary-action:hover {
   border-color: rgba(118, 230, 188, 0.72);
   background: rgba(118, 230, 188, 0.2);
   transform: translateY(-1px);
+}
+
+.search-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.secondary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.nsfw-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 64px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.nsfw-toggle.active {
+  border-color: rgba(255, 138, 162, 0.5);
+  background: rgba(255, 138, 162, 0.12);
+  color: var(--rose);
+}
+
+.spin {
+  animation: spin 1.2s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.api-results {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.api-result-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.025);
+  font-size: 13px;
+}
+
+.api-result-item .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.api-result-item .dot.ok {
+  background: var(--accent);
+}
+
+.api-result-item .dot.fail {
+  background: var(--danger);
+}
+
+.api-result-item .name {
+  flex: 1;
+  font-weight: 700;
+}
+
+.api-result-item .latency {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.api-result-item .error-msg {
+  color: var(--danger);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
 }
 
 .workspace {

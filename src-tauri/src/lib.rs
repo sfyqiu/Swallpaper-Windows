@@ -118,6 +118,23 @@ fn import_local_to_sync() -> Result<String, String> {
     sync::import_local_to_sync()
 }
 
+#[tauri::command]
+async fn test_api_connectivity() -> Vec<sources::ApiTestResult> {
+    sources::test_api_connectivity().await
+}
+
+// ---- Favorites commands ----
+
+#[tauri::command]
+fn toggle_favorite(id: String) -> Result<String, String> {
+    library::toggle_favorite(&id)
+}
+
+#[tauri::command]
+fn list_favorites() -> Result<Vec<library::LibraryWallpaper>, String> {
+    library::list_favorites()
+}
+
 pub fn run() {
     tauri::Builder::default()
         .manage(Mutex::new(VideoWallpaperState::new()))
@@ -133,6 +150,9 @@ pub fn run() {
             download_wallpaper,
             list_wallpaper_sources,
             search_wallpapers,
+            test_api_connectivity,
+            toggle_favorite,
+            list_favorites,
             list_sync_providers,
             get_sync_config,
             get_sync_status,
