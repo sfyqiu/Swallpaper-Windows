@@ -144,34 +144,33 @@ function App() {
   React.useEffect(() => { saveKey(activeSource, apiKey); }, [activeSource, apiKey]);
 
   // =========== RENDER ===========
-  const TABS: { id: Tab; icon: React.ReactNode; label: string }[] = [
-    { id: "home", icon: <Home size={16} />, label: "Home" },
-    { id: "wallpaper", icon: <Image size={16} />, label: "Wallpapers" },
-    { id: "media", icon: <Film size={16} />, label: "Media" },
-    { id: "library", icon: <FolderOpen size={16} />, label: "Library" },
+  const TABS: { id: Tab; label: string }[] = [
+    { id: "home", label: "Home" },
+    { id: "wallpaper", label: "Wallpapers" },
+    { id: "media", label: "Media" },
+    { id: "library", label: "Library" },
   ];
 
   return (
     <main className="shell">
-      {/* ---- Top Navigation Bar ---- */}
+      {/* ---- Top Navigation Bar (Mac v2 style) ---- */}
       <header className="topbar">
         <div className="topbar-logo">
-          <img src="/icon.png" alt="" style={{ width: 26, height: 26, borderRadius: 8 }} />
-          <span className="topbar-brand">Swallpaper</span>
+          <img src="/icon.png" alt="" />
+          <span>Swallpaper</span>
         </div>
-        <nav className="topbar-tabs">
+        <div className="topbar-spacer" />
+        <nav className="topbar-segmented">
           {TABS.map((t) => (
             <button key={t.id} className={`topbar-tab ${tab === t.id ? "active" : ""}`} onClick={() => setTab(t.id)}>
-              {t.icon}<span>{t.label}</span>
+              {t.label}
             </button>
           ))}
         </nav>
-        <div className="topbar-actions">
-          <span className="topbar-status">{status}</span>
-          <button className="topbar-btn" onClick={() => setShowSettings(!showSettings)} title="Settings">
-            <Settings size={18} />
-          </button>
-        </div>
+        <div className="topbar-spacer" />
+        <button className="topbar-settings" onClick={() => setShowSettings(!showSettings)} title="Settings">
+          <Settings size={18} />
+        </button>
       </header>
 
       {/* ---- Settings Overlay ---- */}
