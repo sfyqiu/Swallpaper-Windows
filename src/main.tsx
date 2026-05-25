@@ -39,10 +39,10 @@ function saveKey(source: string, value: string) { const k = `${keyStoragePrefix}
 
 // =========== App ===========
 function App() {
-  type Tab = "home" | "wallpaper" | "media" | "library";
+  type Tab = "home" | "wallpaper" | "media" | "library" | "settings";
 
   const [tab, setTab] = React.useState<Tab>("home");
-  const [showSettings, setShowSettings] = React.useState(false);
+  const [settingsTab, setSettingsTab] = React.useState("general");
   const [status, setStatus] = React.useState("");
   const [library, setLibrary] = React.useState<LibraryStatus | null>(null);
   const [sources, setSources] = React.useState<SourceInfo[]>([]);
@@ -168,65 +168,148 @@ function App() {
           ))}
         </nav>
         <div className="topbar-spacer" />
-        <button className="topbar-settings" onClick={() => setShowSettings(!showSettings)} title="Settings">
+        <button className="topbar-settings" onClick={() => setTab("settings")} title="Settings">
           <Settings size={18} />
         </button>
       </header>
 
-      {/* ---- Settings Overlay ---- */}
-      {showSettings && (
-        <div className="settings-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowSettings(false); }}>
-          <div className="settings-sheet">
-            <div className="settings-sheet-header">
-              <h2>Settings</h2>
-              <button onClick={() => setShowSettings(false)}>✕</button>
-            </div>
-            <div className="settings-sheet-body">
-              <div className="settings-section">
-                <h3><RotateCw size={16} /> Auto-Rotate</h3>
-                <div className="settings-row"><span>Interval (min)</span>
-                  <input type="number" min={1} max={1440} value={schedulerConfig.intervalMinutes}
-                    onChange={(e) => setSchedulerConfig((c) => ({ ...c, intervalMinutes: Math.max(1, parseInt(e.target.value) || 30) }))}
-                    style={{ width: 70, padding: "4px 8px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)", color: "#fff" }} /></div>
-                <div className="settings-row"><span>Static</span><input type="checkbox" checked={schedulerConfig.includeStatic} onChange={(e) => setSchedulerConfig((c) => ({ ...c, includeStatic: e.target.checked }))} /></div>
-                <div className="settings-row"><span>Video</span><input type="checkbox" checked={schedulerConfig.includeVideo} onChange={(e) => setSchedulerConfig((c) => ({ ...c, includeVideo: e.target.checked }))} /></div>
-                <div className="engine-actions" style={{ marginTop: 8 }}>
-                  {schedulerConfig.enabled ? <button onClick={stopRotate}><Square size={16} /> Stop</button> : <button onClick={startRotate}><Play size={16} /> Start</button>}
-                  <button onClick={rotateNow}><RotateCw size={16} /> Rotate Now</button>
-                </div>
+      {/* ---- Content Area ---- */}
+      <section className="content">
+        {/* SETTINGS TAB (Mac v2 style: sidebar + content) */}
+        {tab === "settings" && (
+          <div className="settings-page">
+            <aside className="settings-sidebar">
+              {[
+                { id: "general", label: "General", icon: "⚙" },
+                { id: "scheduler", label: "Scheduler", icon: "⏰" },
+                { id: "sync", label: "Cloud Sync", icon: "☁" },
+                { id: "about", label: "About", icon: "ℹ" },
+              ].map((s) => (
+                <button key={s.id} className={`settings-nav-item ${settingsTab === s.id ? "active" : ""}`}
+                  onClick={() => setSettingsTab(s.id)}>
+                  <span className="settings-nav-icon">{s.icon}</span>
+                  <span>{s.label}</span>
+                </button>
+              ))}
+            </aside>
+            <div className="settings-content">
+              <div className="settings-content-header">
+                <h2>{settingsTab === "general" ? "General" : settingsTab === "scheduler" ? "Scheduler" : settingsTab === "sync" ? "Cloud Sync" : "About"}</h2>
+                <button className="settings-close-btn" onClick={() => setTab("home")}>✕</button>
               </div>
-              <div className="settings-section">
-                <h3>Content</h3>
-                <div className="settings-row"><span>Adult content</span>
-                  <button className={`nsfw-toggle ${nsfwEnabled ? "active" : ""}`} onClick={toggleNsfw}>{nsfwEnabled ? "ON" : "OFF"}</button></div>
-              </div>
-              <div className="settings-section">
-                <h3>Language</h3>
-                <div className="settings-row" style={{ gap: 8 }}>
-                  {getAvailableLangs().map((l) => (
-                    <button key={l.code} onClick={() => { setLang(l.code); setLangState(l.code); }}
-                      style={{ padding: "4px 12px", borderRadius: 8, border: lang === l.code ? "1px solid var(--accent-pink)" : "1px solid rgba(255,255,255,0.12)", background: lang === l.code ? "rgba(255,51,102,0.15)" : "transparent", color: lang === l.code ? "var(--accent-pink)" : "var(--text-secondary)", cursor: "pointer", fontSize: 13 }}>{l.name}</button>
-                  ))}
-                </div>
-              </div>
-              <div className="settings-section">
-                <h3>About</h3>
-                <dl className="meta-list">
-                  <div><dt>Version</dt><dd>v0.1.3</dd></div>
-                  <div><dt>Build</dt><dd>Tauri 2 + React + Rust</dd></div>
-                </dl>
-                <div className="engine-actions" style={{ marginTop: 8 }}>
-                  <button onClick={() => window.open("https://github.com/sfyqiu/Swallpaper-Windows", "_blank")}><ExternalLink size={16} /> Repository</button>
-                  <button onClick={() => window.open("https://github.com/sfyqiu/Swallpaper-Windows/issues", "_blank")}><Info size={16} /> Report Issue</button>
-                </div>
+              <div className="settings-content-body">
+                {settingsTab === "general" && (
+                  <>
+                    <MacSettingsSection title="Language & Region">
+                      <MacSettingsRow label="Display Language">
+                        <div style={{ display: "flex", gap: 6 }}>
+                          {getAvailableLangs().map((l) => (
+                            <button key={l.code} onClick={() => { setLang(l.code); setLangState(l.code); }}
+                              className={`lang-btn ${lang === l.code ? "active" : ""}`}>{l.name}</button>
+                          ))}
+                        </div>
+                      </MacSettingsRow>
+                    </MacSettingsSection>
+                    <MacSettingsSection title="Content">
+                      <MacSettingsRow label="Adult content">
+                        <button className={`nsfw-toggle ${nsfwEnabled ? "active" : ""}`} onClick={toggleNsfw}>
+                          {nsfwEnabled ? "ON" : "OFF"}
+                        </button>
+                      </MacSettingsRow>
+                    </MacSettingsSection>
+                    <MacSettingsSection title="API Keys">
+                      <MacSettingsRow label="Wallhaven API Key" subtitle="Optional — unlocks NSFW content">
+                        <input className="settings-input" type="password" placeholder="(optional)"
+                          value={readSavedKey("wallhaven")}
+                          onChange={(e) => saveKey("wallhaven", e.target.value)} />
+                      </MacSettingsRow>
+                      <MacSettingsRow label="Pexels API Key" subtitle="Required for Pexels photos & videos" divider>
+                        <input className="settings-input" type="password" placeholder="(required)"
+                          value={readSavedKey("pexels")}
+                          onChange={(e) => saveKey("pexels", e.target.value)} />
+                      </MacSettingsRow>
+                      <MacSettingsRow label="Unsplash Access Key" subtitle="Required for Unsplash" divider>
+                        <input className="settings-input" type="password" placeholder="(required)"
+                          value={readSavedKey("unsplash")}
+                          onChange={(e) => saveKey("unsplash", e.target.value)} />
+                      </MacSettingsRow>
+                      <MacSettingsRow label="NASA API Key" subtitle="Optional — defaults to DEMO_KEY">
+                        <input className="settings-input" type="password" placeholder="(optional)"
+                          value={readSavedKey("nasa_apod")}
+                          onChange={(e) => saveKey("nasa_apod", e.target.value)} />
+                      </MacSettingsRow>
+                    </MacSettingsSection>
+                  </>
+                )}
+                {settingsTab === "scheduler" && (
+                  <MacSettingsSection title="Auto-Rotate">
+                    <MacSettingsRow label="Interval (minutes)">
+                      <input type="number" min={1} max={1440} value={schedulerConfig.intervalMinutes}
+                        onChange={(e) => setSchedulerConfig((c) => ({ ...c, intervalMinutes: Math.max(1, parseInt(e.target.value) || 30) }))}
+                        className="settings-input" style={{ width: 80 }} />
+                    </MacSettingsRow>
+                    <MacSettingsRow label="Static wallpapers" divider>
+                      <input type="checkbox" checked={schedulerConfig.includeStatic}
+                        onChange={(e) => setSchedulerConfig((c) => ({ ...c, includeStatic: e.target.checked }))} />
+                    </MacSettingsRow>
+                    <MacSettingsRow label="Video wallpapers">
+                      <input type="checkbox" checked={schedulerConfig.includeVideo}
+                        onChange={(e) => setSchedulerConfig((c) => ({ ...c, includeVideo: e.target.checked }))} />
+                    </MacSettingsRow>
+                    <div className="engine-actions" style={{ marginTop: 12 }}>
+                      {schedulerConfig.enabled
+                        ? <button onClick={stopRotate}><Square size={16} /> Stop</button>
+                        : <button onClick={startRotate}><Play size={16} /> Start</button>}
+                      <button onClick={rotateNow}><RotateCw size={16} /> Rotate Now</button>
+                    </div>
+                  </MacSettingsSection>
+                )}
+                {settingsTab === "sync" && (
+                  <MacSettingsSection title="Cloud Sync">
+                    {syncConfig?.enabled ? (
+                      <>
+                        <MacSettingsRow label="Provider" subtitle={syncConfig.providerName ?? syncConfig.provider ?? undefined} />
+                        <MacSettingsRow label="Mode" subtitle={syncConfig.mode === "auto" ? "Auto sync" : "Manual sync"} divider />
+                        <MacSettingsRow label="Path" subtitle={syncConfig.libraryPath ?? "—"} />
+                        <div className="engine-actions" style={{ marginTop: 12 }}>
+                          <button onClick={scanLibrary}><RefreshCw size={16} /> Scan</button>
+                          {syncConfig.mode === "manual" && <button onClick={importToSync}><Download size={16} /> Import</button>}
+                          <button onClick={disableSync} style={{ borderColor: "rgba(255,51,102,0.4)" }}><Square size={16} /> Disable</button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="provider-list">
+                        {providers.map((p) => (
+                          <button key={p.id} className={`provider-item ${p.detected ? "detected" : ""}`}
+                            onClick={() => { const path = p.detectedPath ?? p.suggestedPath ?? ""; if (path) enableSync(p.id, p.name, path, "manual"); }}>
+                            <div><strong>{p.name}</strong><small>{p.detected ? p.detectedPath : "Not detected"}</small></div>
+                            <span className={p.detected ? "provider-badge" : "provider-badge muted"}>{p.detected ? "Found" : "Select"}</span>
+                          </button>
+                        ))}
+                        <div style={{ marginTop: 8 }}>
+                          <input className="settings-input" style={{ width: "100%" }} placeholder="Custom path: C:\Users\...\OneDrive"
+                            onKeyDown={(e) => { if (e.key === "Enter") { const v = (e.target as HTMLInputElement).value.trim(); if (v) enableSync("custom", "Custom", v, "manual"); }}} />
+                        </div>
+                      </div>
+                    )}
+                  </MacSettingsSection>
+                )}
+                {settingsTab === "about" && (
+                  <MacSettingsSection title="About Swallpaper">
+                    <MacSettingsRow label="Version" subtitle="v0.1.3" />
+                    <MacSettingsRow label="Build" subtitle="Tauri 2 + React + Rust" divider />
+                    <MacSettingsRow label="License" subtitle="GPL-3.0" />
+                    <div className="engine-actions" style={{ marginTop: 12 }}>
+                      <button onClick={() => window.open("https://github.com/sfyqiu/Swallpaper-Windows", "_blank")}><ExternalLink size={16} /> Repository</button>
+                      <button onClick={() => window.open("https://github.com/sfyqiu/Swallpaper-Windows/issues", "_blank")}><Info size={16} /> Report Issue</button>
+                    </div>
+                  </MacSettingsSection>
+                )}
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* ---- Content Area ---- */}
-      <section className="content">
         {/* HOME TAB */}
         {tab === "home" && (
           <div className="home-content">
@@ -497,6 +580,31 @@ function App() {
         )}
       </section>
     </main>
+  );
+}
+
+// =========== Mac v2 Settings Components ===========
+function MacSettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="mac-settings-section">
+      <h3 className="mac-settings-section-title">{title}</h3>
+      <div className="mac-settings-section-body">{children}</div>
+    </div>
+  );
+}
+
+function MacSettingsRow({ label, subtitle, divider, children }: { label: string; subtitle?: string; divider?: boolean; children?: React.ReactNode }) {
+  return (
+    <>
+      <div className="mac-settings-row">
+        <div className="mac-settings-row-label">
+          <span className="mac-settings-row-title">{label}</span>
+          {subtitle && <span className="mac-settings-row-subtitle">{subtitle}</span>}
+        </div>
+        <div className="mac-settings-row-control">{children}</div>
+      </div>
+      {divider && <div className="mac-settings-divider" />}
+    </>
   );
 }
 

@@ -229,17 +229,84 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .api-result-item .latency { color: var(--text-tertiary); font-size: 10px; }
 .api-result-item .error-msg { color: var(--accent-pink); font-size: 10px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ---- Settings Overlay ---- */
-.settings-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.55); display: grid; place-items: center; backdrop-filter: blur(8px); }
-.settings-sheet { width: 440px; max-height: 78vh; overflow-y: auto; border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-lg); background: var(--bg-elevated); box-shadow: 0 24px 80px rgba(0,0,0,0.5); }
-.settings-sheet-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid rgba(255,255,255,0.04); }
-.settings-sheet-header h2 { margin: 0; font-size: 16px; font-weight: 700; }
-.settings-sheet-header button { width: 28px; height: 28px; border: 1px solid rgba(255,255,255,0.08); border-radius: 999px; background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 13px; }
-.settings-sheet-body { padding: 14px 18px; }
-.settings-section { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.03); }
-.settings-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-.settings-section h3 { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; font-size: 13px; font-weight: 700; color: var(--accent-cyan); }
-.settings-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; font-size: 13px; color: var(--text-secondary); }
+/* ---- Settings Page (Mac v2: sidebar + content) ---- */
+.settings-page {
+  display: flex;
+  min-height: calc(100vh - 80px);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #1C1C1E;
+}
+.settings-sidebar {
+  width: 180px;
+  padding: 16px 10px;
+  background: rgba(26,26,26,0.85);
+  border-right: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.settings-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255,255,255,0.50);
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+}
+.settings-nav-item:hover { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.72); }
+.settings-nav-item.active { background: rgba(255,255,255,0.10); color: #fff; border: 1px solid rgba(255,255,255,0.12); }
+.settings-nav-icon { width: 20px; text-align: center; font-size: 14px; }
+
+.settings-content { flex: 1; display: flex; flex-direction: column; }
+.settings-content-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 28px; border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.settings-content-header h2 { margin: 0; font-size: 18px; font-weight: 600; }
+.settings-close-btn {
+  width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+  border: none; border-radius: 999px; background: transparent; color: rgba(255,255,255,0.45);
+  cursor: pointer; font-size: 12px;
+}
+.settings-close-btn:hover { background: rgba(255,255,255,0.10); color: #fff; }
+
+.settings-content-body { flex: 1; padding: 24px 28px; overflow-y: auto; }
+
+/* Mac settings section (matching Mac v2 MacSettingsSection) */
+.mac-settings-section { margin-bottom: 24px; }
+.mac-settings-section-title { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 8px; }
+.mac-settings-section-body { border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; overflow: hidden; }
+
+.mac-settings-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; gap: 16px;
+}
+.mac-settings-row-label { display: flex; flex-direction: column; gap: 2px; }
+.mac-settings-row-title { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.90); }
+.mac-settings-row-subtitle { font-size: 11px; color: rgba(255,255,255,0.40); max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mac-settings-row-control { flex-shrink: 0; }
+.mac-settings-divider { height: 1px; margin-left: 16px; background: rgba(255,255,255,0.04); }
+
+.settings-input {
+  padding: 5px 10px; border: 1px solid rgba(255,255,255,0.10); border-radius: 6px;
+  background: rgba(255,255,255,0.04); color: #fff; font-size: 12px; min-width: 160px;
+}
+.settings-input:focus { outline: none; border-color: rgba(255,51,102,0.4); }
+
+.lang-btn {
+  padding: 4px 10px; border: 1px solid rgba(255,255,255,0.10); border-radius: 6px;
+  background: transparent; color: rgba(255,255,255,0.55); cursor: pointer; font-size: 12px;
+}
+.lang-btn:hover { border-color: rgba(255,255,255,0.22); color: #fff; }
+.lang-btn.active { border-color: rgba(255,51,102,0.4); background: rgba(255,51,102,0.12); color: var(--accent-pink); }
 
 /* ---- Responsive ---- */
 @media (max-width: 900px) {
