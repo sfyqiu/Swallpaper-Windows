@@ -1,6 +1,6 @@
 [package]
 name = "swallpaper-windows"
-version = "0.1.3"
+version = "0.2.0"
 description = "Windows port prototype for Swallpaper"
 authors = ["sfyqiu"]
 edition = "2021"

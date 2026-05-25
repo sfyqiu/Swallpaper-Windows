@@ -296,7 +296,7 @@ function App() {
                 )}
                 {settingsTab === "about" && (
                   <MacSettingsSection title="About Swallpaper">
-                    <MacSettingsRow label="Version" subtitle="v0.1.3" />
+                    <MacSettingsRow label="Version" subtitle="v0.2.0" />
                     <MacSettingsRow label="Build" subtitle="Tauri 2 + React + Rust" divider />
                     <MacSettingsRow label="License" subtitle="GPL-3.0" />
                     <div className="engine-actions" style={{ marginTop: 12 }}>
