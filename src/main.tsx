@@ -230,12 +230,11 @@ function App() {
         {/* HOME TAB */}
         {tab === "home" && (
           <div className="home-content">
+            {/* Hero banner (Mac v2 style) */}
             <div className="home-hero">
-              <h1>Swallpaper</h1>
-              <p className="lede">Static wallpapers · Dynamic wallpapers · Multi-source aggregation</p>
-              <div className="home-status">
-                <span className="status-dot" />
-                <span>{library ? `${library.records} items in library` : "Loading..."}</span>
+              <div className="home-hero-content">
+                <h1>Swallpaper</h1>
+                <p>Static wallpapers · Dynamic wallpapers · Multi-source aggregation — {library?.records ?? 0} items in your library</p>
               </div>
             </div>
 
@@ -273,7 +272,7 @@ function App() {
                     <article key={item.id} className="wallpaper-card" onClick={() => applyLibraryItem(item)}>
                       <div className="card-thumb-wrap">
                         <img src={item.thumbnailUrl || convertFileSrc(item.filePath)} alt={item.title} loading="lazy" />
-                        {item.kind === "videoWallpaper" && <span className="media-badge"><Video size={11} /></span>}
+                        {item.kind === "videoWallpaper" && <span className="media-badge">Video</span>}
                       </div>
                       <div className="wallpaper-card-body"><h3>{item.title}</h3><p>{item.source}</p></div>
                     </article>
@@ -334,7 +333,7 @@ function App() {
                     <article key={item.id} className="wallpaper-card">
                       <div className="card-thumb-wrap">
                         <img src={item.thumbnailUrl} alt={item.title} loading="lazy" />
-                        {item.kind === "videoWallpaper" && <span className="media-badge"><Video size={11} /></span>}
+                        {item.kind === "videoWallpaper" && <span className="media-badge">Video</span>}
                       </div>
                       <div className="wallpaper-card-body">
                         <h3>{item.title}</h3>
@@ -412,7 +411,7 @@ function App() {
                     <article key={item.id} className="wallpaper-card">
                       <div className="card-thumb-wrap">
                         <img src={item.thumbnailUrl} alt={item.title} loading="lazy" />
-                        <span className="media-badge"><Video size={11} /></span>
+                        <span className="media-badge">Video</span>
                       </div>
                       <div className="wallpaper-card-body">
                         <h3>{item.title}</h3>
@@ -480,7 +479,7 @@ function App() {
                   <article key={item.id} className="wallpaper-card" onClick={() => applyLibraryItem(item)}>
                     <div className="card-thumb-wrap">
                       <img src={item.thumbnailUrl || convertFileSrc(item.filePath)} alt={item.title} loading="lazy" />
-                      {item.kind === "videoWallpaper" && <span className="media-badge"><Video size={11} /></span>}
+                      {item.kind === "videoWallpaper" && <span className="media-badge">Video</span>}
                     </div>
                     <div className="wallpaper-card-body">
                       <h3>{item.title}</h3>
